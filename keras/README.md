@@ -1,10 +1,6 @@
 # Deep Code Search
 A keras implementation of the paper [Deep Code Search](https://guxd.github.io/papers/deepcs.pdf).
 
-## Tool Demo
-
-An online tool demo can be found in http://211.249.63.55:81/
-
 ## Dependency
 > Tested in Ubuntu 16.04
 * Python 2.7-3.6
@@ -34,7 +30,11 @@ An online tool demo can be found in http://211.249.63.55:81/
   1) Download and unzip real dataset from [Google Drive](https://drive.google.com/drive/folders/1GZYLT_lzhlVczXjD6dgwVUvDDPHMB6L7?usp=sharing)
   
   2) Replace each file in the `/data` folder with the corresponding real file. 
-
+  
+   ### Configuration
+   
+   Edit hyper-parameters and settings in `config.py`
+   
    ### Train
    
    ```bash
@@ -45,6 +45,7 @@ An online tool demo can be found in http://211.249.63.55:81/
    
    ```bash
    python codesearcher.py --mode repr_code
+   python norm_code_repr.py
    ```
    
    ### Search
@@ -52,8 +53,10 @@ An online tool demo can be found in http://211.249.63.55:81/
    ```bash
    python codesearcher.py --mode search
    ``` 
- 
+   
+## Tool Demo
 
+An online tool demo can be found in http://211.249.63.55:81/ 
 
 ## Citation
 If you find it useful and would like to cite it, the following would be appropriate:
