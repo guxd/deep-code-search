@@ -1,5 +1,5 @@
 # Deep Code Search
-A keras implementation of the paper [Deep Code Search](https://github.com/guxd/guxd.github.io/papers/deepcs.pdf).
+A keras implementation of the paper [Deep Code Search](https://guxd.github.io/papers/deepcs.pdf).
 
 ## Tool Demo
 

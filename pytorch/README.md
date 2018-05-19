@@ -1,6 +1,6 @@
 # Deep Code Search
 
-Pytorch implementation of [Deep Code Search](https://github.com/guxd/guxd.github.io/papers/deepcs.pdf).
+Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepcs.pdf).
 
 ## Tool Demo
 
@@ -23,7 +23,11 @@ An online tool demo can be found in http://211.249.63.55:81/
      
  - `config.py`: Configurations for models defined in the `models.py`. 
    Each function defines the hyperparameters for the corresponding model.
+   
+ - `data.py`: A PyTorch dataset loader.
+ - `utils.py`: Utilities for model and training. 
 
+ 
 ## Usage
 
    ### Data Preparation
