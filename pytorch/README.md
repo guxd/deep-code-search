@@ -43,7 +43,7 @@ An online tool demo can be found in http://211.249.63.55:81/
    ### Code Embedding
    
    ```bash
-   python codesearcher.py --mode repr_code]
+   python codesearcher.py --mode repr_code
    ```
    
    ### Search
