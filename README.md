@@ -1,6 +1,6 @@
 # Deep Code Search
 
-  Code for the paper [Deep Code Search](https://github.com/guxd/guxd.github.io/papers/deepcs.pdf).
+  Code for the ICSE 2018 paper [Deep Code Search](https://github.com/guxd/guxd.github.io/papers/deepcs.pdf).
 
 ## Two Versions
 We release both ```Keras``` and ```PyTorch``` code of our approach, in the ```keras``` and ```pytorch``` folders, respectively.
