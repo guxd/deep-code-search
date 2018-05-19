@@ -2,10 +2,6 @@
 
 Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepcs.pdf).
 
-## Tool Demo
-
-An online tool demo can be found in http://211.249.63.55:81/
-
 ## Dependency
 > Tested in MacOS 10.12, Ubuntu 16.04
 * Python 2.7-3.6
@@ -25,7 +21,7 @@ An online tool demo can be found in http://211.249.63.55:81/
    Each function defines the hyperparameters for the corresponding model.
    
  - `data.py`: A PyTorch dataset loader.
- - `utils.py`: Utilities for model and training. 
+ - `utils.py`: Utilities for models and training. 
 
  
 ## Usage
@@ -37,6 +33,9 @@ An online tool demo can be found in http://211.249.63.55:81/
   1) Download and unzip real dataset from [Google Drive](https://drive.google.com/drive/folders/1GZYLT_lzhlVczXjD6dgwVUvDDPHMB6L7?usp=sharing)
   
   2) Replace each file in the `/data` folder with the corresponding real file. 
+  
+   ### Configuration
+   Edit hyper-parameters and settings in `config.py`
 
    ### Train
    
@@ -56,6 +55,9 @@ An online tool demo can be found in http://211.249.63.55:81/
    python codesearcher.py --mode search
    ```
 
+## Tool Demo
+
+An online tool demo can be found in http://211.249.63.55:81/
 
 ## Citation
 
