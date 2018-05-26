@@ -18,7 +18,7 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
      4) Search: search relevant code for a given query.
      
  - `config.py`: Configurations for models defined in the `models.py`. 
-   Each function defines the hyperparameters for the corresponding model.
+   Each function defines the hyper-parameters for the corresponding model.
    
  - `data.py`: A PyTorch dataset loader.
  - `utils.py`: Utilities for models and training. 
@@ -55,9 +55,6 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    python codesearcher.py --mode search
    ```
 
-## Tool Demo
-
-An online tool demo can be found in http://211.249.63.55:81/
 
 ## Citation
 
