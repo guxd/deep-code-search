@@ -229,7 +229,7 @@ class CodeSearcher:
             
     
     def search(self,model,query,n_results=10):
-        desc=sent2indexes(query, self.vocab_desc)#convert desc sentence to word indices
+        desc=sent2indexes(query, self.vocab_desc)#convert desc sentence into word indices
         desc = np.expand_dims(desc, axis=0)
         desc=gVar(desc)
         desc_repr=model.desc_encoding(desc).data.cpu().numpy()
@@ -247,10 +247,10 @@ class CodeSearcher:
         return codes,sims
                  
     def search_thread(self,codes,sims,desc_repr,codevecs,i,n_results):        
-    #1. compute similarity
+    #1. compute code similarities
         chunk_sims=dot_np(normalize(desc_repr),codevecs) 
         
-    #2. choose top results
+    #2. choose the top K results
         negsims=np.negative(chunk_sims[0])
         maxinds = np.argpartition(negsims, kth=n_results-1)
         maxinds = maxinds[:n_results]        
@@ -263,10 +263,10 @@ class CodeSearcher:
 def parse_args():
     parser = argparse.ArgumentParser("Train and Test Code Search(Embedding) Model")
     parser.add_argument("--mode", choices=["train","eval","repr_code","search"], default='train',
-                        help="The mode to run. In the `train` mode a model is trained."
-                        " In the 'eval' mode the model is tested in ground truth test set"
-                        " In the `repr_code/repr_desc` mode a trained model is used to compute the "
-                        " embedding of a code or a natural language description.")
+                        help="The mode to run. The `train` mode trains a model;"
+                        " the `eval` mode evaluat models in a test set "
+                        " The `repr_code/repr_desc` mode computes vectors"
+                        " for a code snippet or a natural language description with a trained model.")
     parser.add_argument("--verbose",action="store_true", default=True, help="Be verbose")
     return parser.parse_args()
 
