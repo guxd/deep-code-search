@@ -28,7 +28,7 @@ from models import JointEmbeddingModel
 class CodeSearcher:
     def __init__(self, conf=None):
         self.conf = dict() if conf is None else conf
-        self.path = self.conf.get('workdir', 'D:/workspace/Code2Doc/resources/data/github/codesearch/')
+        self.path = self.conf.get('workdir', '../data/github/codesearch/')
         self.train_params = conf.get('training_params', dict())
         self.data_params=conf.get('data_params',dict())
         self.model_params=conf.get('model_params',dict())
@@ -96,7 +96,7 @@ class CodeSearcher:
     def load_code_reprs(self):
         logger.debug('Loading code vectors (chunk size={})..'.format(self._code_base_chunksize))
         if self._code_reprs==None:            
-            """read vectors (2D numpy array) from a hdf5 file"""
+            """reads vectors (2D numpy array) from a hdf5 file"""
             codereprs=[]
             h5f = tables.open_file(self.path+self.data_params['use_codevecs'])
             vecs= h5f.root.vecs
@@ -117,7 +117,7 @@ class CodeSearcher:
 
     
     def load_hdf5(self,vecfile,start_offset,chunk_size):
-        """read training sentences(list of int array) from a hdf5 file"""  
+        """reads training sentences(list of int array) from a hdf5 file"""  
         table = tables.open_file(vecfile)
         data, index = (table.get_node('/phrases'),table.get_node('/indices'))
         data_len = index.shape[0]
@@ -143,12 +143,12 @@ class CodeSearcher:
     
     ##### Converting / reverting #####
     def convert(self, vocab, words):
-        """convert words to indices"""        
+        """convert words into indices"""        
         if type(words) == str:
             words = words.strip().lower().split(' ')
         return [vocab.get(w, 0) for w in words]
     def revert(self, vocab, indices):
-        """revert indices to words"""
+        """revert indices into words"""
         ivocab = dict((v, k) for k, v in vocab.items())
         return [ivocab.get(i, 'UNK') for i in indices]
 
@@ -264,7 +264,7 @@ class CodeSearcher:
     ##### Evaluation in the develop set #####
     def eval(self, model, poolsize, K):
         """
-        validate accuracy in a code pool. 
+        validate in a code pool. 
         param:
             poolsize - size of the code pool, if -1, load the whole test set
         """
@@ -401,10 +401,10 @@ def parse_args():
     parser.add_argument("--proto", choices=["get_config"],  default="get_config",
                         help="Prototype config to use for config")
     parser.add_argument("--mode", choices=["train","eval","repr_code","search"], default='train',
-                        help="The mode to run. In the `train` mode a model is trained."
-                        " In the 'eval' mode the model is tested in ground truth develop set"
-                        " In the `repr_code/repr_desc` mode a trained model is used to compute the "
-                        " embedding of a code or a natural language description.")
+                        help="The mode to run. The `train` mode trains a model;"
+                        " the `eval` mode evaluat models in a test set "
+                        " The `repr_code/repr_desc` mode computes vectors"
+                        " for a code snippet or a natural language description with a trained model.")
     parser.add_argument("--verbose",action="store_true", default=True, help="Be verbose")
     return parser.parse_args()
 

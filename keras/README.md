@@ -1,9 +1,5 @@
 # Deep Code Search
-A keras implementation of the paper [Deep Code Search](https://github.com/guxd/guxd.github.io/papers/deepcs.pdf).
-
-## Tool Demo
-
-An online tool demo can be found in http://211.249.63.55:81/
+A keras implementation of the paper [Deep Code Search](https://guxd.github.io/papers/deepcs.pdf).
 
 ## Dependency
 > Tested in Ubuntu 16.04
@@ -21,7 +17,7 @@ An online tool demo can be found in http://211.249.63.55:81/
      3) Code Embedding: encode code into vectors and store them to a file; 
      4) Search: search relevant code for a given query.
      
- - `config.py`: Configurations for models defined in the `models.py`. 
+ - `configs.py`: Configurations for models defined in the `models.py`. 
    Each function defines the hyperparameters for the corresponding model.
 
 
@@ -31,10 +27,14 @@ An online tool demo can be found in http://211.249.63.55:81/
   The `/data` folder provides a small sample dataset for quick running. 
   To train and test our model:
   
-  1) Download and unzip real dataset from [Google Drive](https://drive.google.com/drive/folders/1GZYLT_lzhlVczXjD6dgwVUvDDPHMB6L7?usp=sharing)
+  1) Download and unzip real dataset from [Google Drive](https://drive.google.com/drive/folders/1GZYLT_lzhlVczXjD6dgwVUvDDPHMB6L7?usp=sharing) or [Baidu Pan](https://pan.baidu.com/s/1U_MtFXqq0C-Qh8WUFAWGvg) for Chinese users.
   
   2) Replace each file in the `/data` folder with the corresponding real file. 
-
+  
+   ### Configuration
+   
+   Edit hyper-parameters and settings in `config.py`
+   
    ### Train
    
    ```bash
@@ -44,7 +44,8 @@ An online tool demo can be found in http://211.249.63.55:81/
    ### Code Embedding
    
    ```bash
-   python codesearcher.py --mode repr_code]
+   python codesearcher.py --mode repr_code
+   python norm_code_repr.py
    ```
    
    ### Search
@@ -52,8 +53,10 @@ An online tool demo can be found in http://211.249.63.55:81/
    ```bash
    python codesearcher.py --mode search
    ``` 
- 
+   
+## Tool Demo
 
+An online tool demo can be found at http://211.249.63.55:81/ 
 
 ## Citation
 If you find it useful and would like to cite it, the following would be appropriate:

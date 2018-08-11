@@ -1,10 +1,6 @@
 # Deep Code Search
 
-Pytorch implementation of [Deep Code Search](https://github.com/guxd/guxd.github.io/papers/deepcs.pdf).
-
-## Tool Demo
-
-An online tool demo can be found in http://211.249.63.55:81/
+Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepcs.pdf).
 
 ## Dependency
 > Tested in MacOS 10.12, Ubuntu 16.04
@@ -22,17 +18,24 @@ An online tool demo can be found in http://211.249.63.55:81/
      4) Search: search relevant code for a given query.
      
  - `config.py`: Configurations for models defined in the `models.py`. 
-   Each function defines the hyperparameters for the corresponding model.
+   Each function defines the hyper-parameters for the corresponding model.
+   
+ - `data.py`: A PyTorch dataset loader.
+ - `utils.py`: Utilities for models and training. 
 
+ 
 ## Usage
 
    ### Data Preparation
   The `/data` folder provides a small sample dataset for quick deploying.  
   To train and test our model:
   
-  1) Download and unzip real dataset from [Google Drive](https://drive.google.com/drive/folders/1GZYLT_lzhlVczXjD6dgwVUvDDPHMB6L7?usp=sharing)
+  1) Download and unzip real dataset from [Google Drive](https://drive.google.com/drive/folders/1GZYLT_lzhlVczXjD6dgwVUvDDPHMB6L7?usp=sharing) or [Baidu Pan](https://pan.baidu.com/s/1U_MtFXqq0C-Qh8WUFAWGvg) for Chinese users.
   
   2) Replace each file in the `/data` folder with the corresponding real file. 
+  
+   ### Configuration
+   Edit hyper-parameters and settings in `config.py`
 
    ### Train
    
@@ -43,7 +46,7 @@ An online tool demo can be found in http://211.249.63.55:81/
    ### Code Embedding
    
    ```bash
-   python codesearcher.py --mode repr_code]
+   python codesearcher.py --mode repr_code
    ```
    
    ### Search

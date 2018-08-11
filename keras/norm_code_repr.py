@@ -1,5 +1,5 @@
-originfile='D:/use.codevecs.h5'
-convertedfile='C:/workspace/Code2Doc/resources/data/github/codesearch/use.codevecs.normalized.h5'
+originfile='/data/use.codevecs.h5'
+convertedfile='/data/use.codevecs.normalized.h5'
 
 import tables 
 import utils
