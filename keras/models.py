@@ -239,9 +239,9 @@ class JointEmbeddingModel:
         assert self._desc_repr_model is not None, 'Must compile the model before saving weights'
         self._desc_repr_model.save_weights(desc_model_file, **kwargs)
 
-    def load(self,  desc_model_file, **kwargs):
-        #assert self._code_repr_model is not None, 'Must compile the model loading weights'
-        #self._code_repr_model.load_weights(code_model_file, **kwargs)
+    def load(self, code_model_file, desc_model_file, **kwargs):
+        assert self._code_repr_model is not None, 'Must compile the model loading weights'
+        self._code_repr_model.load_weights(code_model_file, **kwargs)
         assert self._desc_repr_model is not None, 'Must compile the model loading weights'
         self._desc_repr_model.load_weights(desc_model_file, **kwargs)
 
