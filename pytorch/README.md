@@ -5,7 +5,12 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
 ## Dependency
 > Tested in MacOS 10.12, Ubuntu 16.04
 * Python 2.7-3.6
-* Pytorch 0.4.0 or newer
+* PyTorch 0.4.0
+* tqdm
+
+ ```
+ pip install -r requirements.txt
+ ```
 
 ## Code Structures
 

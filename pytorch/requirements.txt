@@ -3,3 +3,4 @@ torchvision==0.2.1
 tables
 numpy
 scipy
+tqdm

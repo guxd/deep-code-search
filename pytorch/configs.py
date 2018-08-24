@@ -40,14 +40,14 @@ def get_config():
             'validation_split': 0.2,
             #'optimizer': 'adam',
             'lr':0.001,
-            'valid_every': 5,
+            'valid_every': 10,
             'n_eval': 100,
             'evaluate_all_threshold': {
                 'mode': 'all',
                 'top1': 0.4,
             },
             'log_every': 100,
-            'save_every': 5,
+            'save_every': 10,
             'reload':-1,#970,#epoch that the model is reloaded from . If reload=0, then train from scratch
         
 

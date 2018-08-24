@@ -3,21 +3,21 @@ import sys
 import random
 import traceback
 import numpy as np
-from scipy.stats import rankdata
 import math
 from math import log
 import argparse
 from datashape.coretypes import real
 random.seed(42)
 import threading
-import configs
 import codecs
+from tqdm import tqdm
 import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 import torch
 from torch import optim
+import torch.nn.functional as F
 
 from utils import cos_np, normalize, dot_np, gVar, sent2indexes
 from configs import get_config
@@ -37,6 +37,8 @@ class CodeSearcher:
         self.codevecs=[]
         self.codebase= []
         self.codebase_chunksize=2000000
+        
+        self.valid_set = None
        
 
     ##### Data Set #####   
@@ -62,21 +64,16 @@ class CodeSearcher:
        
        
     ##### Model Loading / saving #####
-    def save_model_epoch(self, model, epoch):
-        if not os.path.exists(self.path+'models/'+self.model_params['model_name']+'/'):
-            os.makedirs(self.path+'models/'+self.model_params['model_name']+'/')
-        model.save(self.path+'models/'+self.model_params['model_name']+'/epo%d_code.h5' % epoch,
-                   self.path+'models/'+self.model_params['model_name']+'/epo%d_desc.h5' % epoch, overwrite=True)
+    def save_model(self, model, epoch):
+        if not os.path.exists(self.path+'models/'):
+            os.makedirs(self.path+'models/')
+        torch.save(model.state_dict(), self.path+'models/epo%d.h5' % epoch)
         
-    def load_model_epoch(self, model, epoch):
-        assert os.path.exists(
-                self.path+'models/'+self.model_params['model_name']+'/epo%d_code.h5' % epoch), 'Weights at epoch %d not found' % epoch
-        assert os.path.exists(
-                self.path+'models/'+self.model_params['model_name']+'/epo%d_desc.h5' % epoch), 'Weights at epoch %d not found' % epoch
-        model.load(self.path+'models/'+self.model_params['model_name']+'/epo%d_code.h5' % epoch,
-                   self.path+'models/'+self.model_params['model_name']+'/epo%d_desc.h5' % epoch)
-
-
+    def load_model(self, model, epoch):
+        assert os.path.exists(self.path+'models/epo%d.h5'%epoch), 'Weights at epoch %d not found' % epoch
+        model.load_state_dict(torch.load(self.path+'models/epo%d.h5' % epoch))
+        
+        
 
     ##### Training #####
     def train(self, model):
@@ -112,11 +109,12 @@ class CodeSearcher:
                     losses=[]
                 itr = itr + 1    
             
-            if epoch and epoch % valid_every == 0:
-                acc1, mrr = self.eval(model,1000,1)              
+      #      if epoch and epoch % valid_every == 0:
+      #          logger.info("validating..")
+      #          acc1, mrr, map, ndcg = self.eval(model,1000,1)              
                         
             if epoch and epoch % save_every == 0:
-                self.save_model_epoch(model, i)
+                self.save_model(model, epoch)
 
     ##### Evaluation #####
     def eval(self, model, poolsize, K):
@@ -170,20 +168,18 @@ class CodeSearcher:
                 idcg+=(math.pow(2,itemRelevance)-1.0)*(math.log(2)/math.log(i+2))
             return idcg
 
-        #load test dataset
-        valid_set = CodeSearchDataset(self.path,
+        if self.valid_set is None:        #load test dataset
+            self.valid_set=CodeSearchDataset(self.path,
                                       self.conf['valid_name'],self.conf['name_len'],
                                       self.conf['valid_api'],self.conf['api_len'],
                                       self.conf['valid_tokens'],self.conf['tokens_len'],
                                       self.conf['valid_desc'],self.conf['desc_len'])
         
-        data_loader = torch.utils.data.DataLoader(dataset=valid_set, batch_size=poolsize, 
+        data_loader = torch.utils.data.DataLoader(dataset=self.valid_set, batch_size=poolsize, 
                                            shuffle=True, drop_last=True, num_workers=1)
         
-        acc,mrr,map,ndcg=0,0,0,0
-        n_pools=0
-        for names, apis, toks, descs, _ in data_loader:
-            n_pools+=1
+        accs,mrrs,maps,ndcgs=[],[],[],[]
+        for names, apis, toks, descs, _ in tqdm(data_loader):
             names, apis, toks = gVar(names), gVar(apis), gVar(toks)
             code_repr=model.code_encoding(names, apis, toks)
             for i in range(poolsize):
@@ -196,17 +192,13 @@ class CodeSearcher:
                 predict = predict[:n_results]   
                 predict = [int(k) for k in predict]
                 real=[i]
-                acc+=ACC(real,predict)
-                mrr+=MRR(real,predict)
-                map+=MAP(real,predict)
-                ndcg+=NDCG(real,predict)                          
-        acc = acc / n_pools/poolsize
-        mrr = mrr / n_pools/poolsize
-        map = map / n_pools/poolsize
-        ndcg= ndcg/ n_pools/poolsize
-        logger.info('ACC={}, MRR={}, MAP={}, nDCG={}'.format(acc,mrr,map,ndcg))
+                accs.append(ACC(real,predict))
+                mrrs.append(MRR(real,predict))
+                maps.append(MAP(real,predict))
+                ndcgs.append(NDCG(real,predict))                          
+        logger.info('ACC={}, MRR={}, MAP={}, nDCG={}'.format(np.mean(accs),np.mean(mrrs),np.mean(maps),np.mean(ndcgs)))
         
-        return acc,mrr,map,ndcg
+        return np.mean(accs),np.mean(mrrs),np.mean(maps),np.mean(ndcgs)
     
     
     ##### Compute Representation #####
@@ -279,7 +271,7 @@ if __name__ == '__main__':
     ##### Define model ######
     logger.info('Build Model')
     if conf['reload']>0:
-        model= codesearcher.load_model_epoch(conf['reload'])
+        model= codesearcher.load_model(conf['reload'])
     else:
         model = JointEmbeder(conf)#initialize the model
     model = model.cuda() if torch.cuda.is_available() else model
