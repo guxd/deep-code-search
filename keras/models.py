@@ -6,8 +6,6 @@ from keras.layers import Concatenate, Dot, Embedding, Dropout, Lambda, Activatio
 from keras import backend as K
 from keras.models import Model
 from keras.utils import plot_model
-import theano
-from theano import config
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
@@ -221,7 +219,7 @@ class JointEmbeddingModel:
 
     def fit(self, x, **kwargs):
         assert self._training_model is not None, 'Must compile the model before fitting data'
-        y = np.zeros(shape=x[0].shape[:1],dtype=config.floatX)
+        y = np.zeros(shape=x[0].shape[:1],dtype=np.float32)
         return self._training_model.fit(x, y, **kwargs)
 
     def repr_code(self, x, **kwargs):
