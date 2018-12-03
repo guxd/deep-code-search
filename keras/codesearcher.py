@@ -399,9 +399,9 @@ class CodeSearcher:
         sims.extend(chunk_sims)
         
     def postproc(self,codes_sims):
-        unzipped=zip(*codes_sims)
-        codes=[code for code in unzipped[0]]
-        sims=[sim for sim in unzipped[1]]
+        codes_, sims_ = zip(*codes_sims)
+        codes=[code for code in codes_]
+        sims=[sim for sim in sims_]
         final_codes=[]
         final_sims=[]
         n=len(codes_sims)        
@@ -474,7 +474,7 @@ if __name__ == '__main__':
             codes,sims=codesearcher.search(model, query,n_results)
             zipped=zip(codes,sims)
             zipped=sorted(zipped,reverse=True, key=lambda x:x[1])
-            zipped=self.postproc(zipped)
-            zipped = zipped[:n_results]
+            zipped=codesearcher.postproc(zipped)
+            zipped = list(zipped)[:n_results]
             results = '\n\n'.join(map(str,zipped)) #combine the result into a returning string
             print(results)
