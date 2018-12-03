@@ -86,7 +86,8 @@ class CodeSearcher:
         logger.info('Loading codebase (chunk size={})..'.format(self._code_base_chunksize))
         if self._code_base==None:
             codebase=[]
-            codes=codecs.open(self.path+self.data_params['use_codebase']).readlines()
+            #codes=codecs.open(self.path+self.data_params['use_codebase']).readlines()
+            codes=codecs.open(self.path+self.data_params['use_codebase'],encoding='utf8',errors='replace').readlines()
                 #use codecs to read in case of encoding problem
             for i in range(0,len(codes),self._code_base_chunksize):
                 codebase.append(codes[i:i+self._code_base_chunksize])            
@@ -396,6 +397,23 @@ class CodeSearcher:
         chunk_sims=chunk_sims[0][maxinds]
         codes.extend(chunk_codes)
         sims.extend(chunk_sims)
+        
+    def postproc(self,codes_sims):
+        unzipped=zip(*codes_sims)
+        codes=[code for code in unzipped[0]]
+        sims=[sim for sim in unzipped[1]]
+        final_codes=[]
+        final_sims=[]
+        n=len(codes_sims)        
+        for i in range(n):
+            is_dup=False
+            for j in range(i):
+                if codes[i][:80]==codes[j][:80] and abs(sims[i]-sims[j])<0.01:
+                    is_dup=True
+            if not is_dup:
+                final_codes.append(codes[i])
+                final_sims.append(sims[i])
+        return zip(final_codes,final_sims)
 
     
 def parse_args():
@@ -455,5 +473,8 @@ if __name__ == '__main__':
                 break
             codes,sims=codesearcher.search(model, query,n_results)
             zipped=zip(codes,sims)
+            zipped=sorted(zipped,reverse=True, key=lambda x:x[1])
+            zipped=self.postproc(zipped)
+            zipped = zipped[:n_results]
             results = '\n\n'.join(map(str,zipped)) #combine the result into a returning string
             print(results)
