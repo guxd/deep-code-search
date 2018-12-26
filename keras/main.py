@@ -11,7 +11,6 @@ import math
 from math import log
 from models import *
 import argparse
-from datashape.coretypes import real
 random.seed(42)
 import threading
 import tables  
@@ -21,14 +20,14 @@ import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s: %(name)s: %(levelname)s: %(message)s")
 
-from utils import cos_np, normalize,cos_np_for_normalized
+from utils import cos_np, normalize, cos_np_for_normalized
 from configs import get_config
 from models import JointEmbeddingModel
 
 class CodeSearcher:
     def __init__(self, conf=None):
         self.conf = dict() if conf is None else conf
-        self.path = self.conf.get('workdir', '../data/github/codesearch/')
+        self.path = self.conf.get('workdir', '../data/github/')
         self.train_params = conf.get('training_params', dict())
         self.data_params=conf.get('data_params',dict())
         self.model_params=conf.get('model_params',dict())
@@ -165,7 +164,7 @@ class CodeSearcher:
         if not os.path.exists(self.path+'models/'+self.model_params['model_name']+'/'):
             os.makedirs(self.path+'models/'+self.model_params['model_name']+'/')
         model.save("{}models/{}/epo{:d}_code.h5".format(self.path, self.model_params['model_name'], epoch),
-                   "{}models/{}/epo{:d}_desc.h5".format(self.path, self.model_params['model_name'], epoch), overwrite=True)
+               "{}models/{}/epo{:d}_desc.h5".format(self.path, self.model_params['model_name'], epoch), overwrite=True)
         
     def load_model_epoch(self, model, epoch):
         assert os.path.exists(
@@ -175,7 +174,7 @@ class CodeSearcher:
             "{}models/{}/epo{:d}_desc.h5".format(self.path, self.model_params['model_name'], epoch))\
             ,"Weights at epoch {:d} not found".format(epoch)
         model.load("{}models/{}/epo{:d}_code.h5".format(self.path, self.model_params['model_name'], epoch),
-                   "{}models/{}/epo{:d}_desc.h5".format(self.path, self.model_params['model_name'], epoch))
+               "{}models/{}/epo{:d}_desc.h5".format(self.path, self.model_params['model_name'], epoch))
 
 
 
@@ -274,32 +273,23 @@ class CodeSearcher:
         def ACC(real,predict):
             sum=0.0
             for val in real:
-                try:
-                    index=predict.index(val)
-                except ValueError:
-                    index=-1
-                if index!=-1:
-                    sum=sum+1  
+                try: index=predict.index(val)
+                except ValueError: index=-1
+                if index!=-1: sum=sum+1  
             return sum/float(len(real))
         def MAP(real,predict):
             sum=0.0
             for id,val in enumerate(real):
-                try:
-                    index=predict.index(val)
-                except ValueError:
-                    index=-1
-                if index!=-1:
-                    sum=sum+(id+1)/float(index+1)
+                try: index=predict.index(val)
+                except ValueError: index=-1
+                if index!=-1: sum=sum+(id+1)/float(index+1)
             return sum/float(len(real))
         def MRR(real,predict):
             sum=0.0
             for val in real:
-                try:
-                    index=predict.index(val)
-                except ValueError:
-                    index=-1
-                if index!=-1:
-                    sum=sum+1.0/float(index+1)
+                try: index=predict.index(val)
+                except ValueError: index=-1
+                if index!=-1: sum=sum+1.0/float(index+1)
             return sum/float(len(real))
         def NDCG(real,predict):
             dcg=0.0
@@ -316,7 +306,7 @@ class CodeSearcher:
             for i in range(n):
                 idcg+=(math.pow(2,itemRelevance)-1.0)*(math.log(2)/math.log(i+2))
             return idcg
-			
+
         #load valid dataset
         if self._eval_sets is None:
             methnames,apiseqs,tokens,descs=self.load_valid_data_chunk(poolsize)
@@ -356,19 +346,20 @@ class CodeSearcher:
     
     ##### Compute Representation #####
     def repr_code(self,model):
-        methnames,apiseqs,tokens=self.load_use_data()
-        padded_methnames = self.pad(methnames, self.data_params['methname_len'])
-        padded_apiseqs = self.pad(apiseqs, self.data_params['apiseq_len'])
-        padded_tokens = self.pad(tokens, self.data_params['tokens_len'])
+        methnames, apiseqs, tokens = self.load_use_data()
+        methnames = self.pad(methnames, self.data_params['methname_len'])
+        apiseqs = self.pad(apiseqs, self.data_params['apiseq_len'])
+        tokens = self.pad(tokens, self.data_params['tokens_len'])
         
-        vecs=model.repr_code([padded_methnames,padded_apiseqs,padded_tokens],batch_size=1000)
+        vecs=model.repr_code([methnames, apiseqs, tokens], batch_size=1000)
         vecs=vecs.astype('float32')
+        vecs= normalize(vecs)
         self.save_code_reprs(vecs)
         return vecs
             
     
     def search(self,model,query,n_results=10):
-        desc=[self.convert(self.vocab_desc,query)]#convert desc sentence to word indices
+        desc=[self.convert(self.vocab_desc, query)]#convert desc sentence to word indices
         padded_desc = self.pad(desc, self.data_params['desc_len'])
         desc_repr=model.repr_desc([padded_desc])
         desc_repr=desc_repr.astype('float32')
@@ -471,9 +462,9 @@ if __name__ == '__main__':
                 print("Exception while parsing your input:")
                 traceback.print_exc()
                 break
-            codes,sims=codesearcher.search(model, query,n_results)
+            codes,sims=codesearcher.search(model, query, n_results)
             zipped=zip(codes,sims)
-            zipped=sorted(zipped,reverse=True, key=lambda x:x[1])
+            zipped=sorted(zipped, reverse=True, key=lambda x:x[1])
             zipped=codesearcher.postproc(zipped)
             zipped = list(zipped)[:n_results]
             results = '\n\n'.join(map(str,zipped)) #combine the result into a returning string

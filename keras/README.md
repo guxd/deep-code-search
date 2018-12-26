@@ -11,7 +11,7 @@ A keras implementation of the paper [Deep Code Search](https://guxd.github.io/pa
 
  - `models.py`: Neural network models for code/desc representation and similarity measure.
  
- - `codesearcher.py`: The main entry for code search, including four sub-tasks: 
+ - `main.py`: The main entry for code search, including four sub-tasks: 
      1) Train: train code/desc representaton models; 
      2) Eval: evaluate the learnt code/desc representation models; 
      3) Code Embedding: encode code into vectors and store them to a file; 
@@ -38,20 +38,19 @@ A keras implementation of the paper [Deep Code Search](https://guxd.github.io/pa
    ### Train
    
    ```bash
-   python codesearcher.py --mode train
+   python main.py --mode train
    ```
    
    ### Code Embedding
    
    ```bash
-   python codesearcher.py --mode repr_code
-   python norm_code_repr.py
+   python main.py --mode repr_code
    ```
    
    ### Search
    
    ```bash
-   python codesearcher.py --mode search
+   python main.py --mode search
    ``` 
    
 ## Tool Demo

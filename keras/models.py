@@ -214,7 +214,7 @@ class JointEmbeddingModel:
         self._code_repr_model.compile(loss='cosine_proximity', optimizer=optimizer, **kwargs)
         self._desc_repr_model.compile(loss='cosine_proximity', optimizer=optimizer, **kwargs)
         self._training_model.compile(loss=lambda y_true, y_pred: y_pred+y_true-y_true, optimizer=optimizer, **kwargs)
-        #Here, +y_true-y_true is for avoiding an unused input warning, it can also be set as simply +y_true, because y_true is always set to 0 in the training set.
+        #+y_true-y_true is for avoiding an unused input warning, it can be simply +y_true since y_true is always 0 in the training set.
         self._sim_model.compile(loss='binary_crossentropy', optimizer=optimizer, **kwargs)
 
     def fit(self, x, **kwargs):
