@@ -77,6 +77,8 @@ class CodeSearcher:
 
     ##### Training #####
     def train(self, model):
+        model.train()
+        
         log_every = self.conf['log_every']
         valid_every = self.conf['valid_every']
         save_every = self.conf['save_every']
@@ -177,7 +179,7 @@ class CodeSearcher:
         
         data_loader = torch.utils.data.DataLoader(dataset=self.valid_set, batch_size=poolsize, 
                                            shuffle=True, drop_last=True, num_workers=1)
-        
+        model.eval()
         accs,mrrs,maps,ndcgs=[],[],[],[]
         for names, apis, toks, descs, _ in tqdm(data_loader):
             names, apis, toks = gVar(names), gVar(apis), gVar(toks)
@@ -203,6 +205,7 @@ class CodeSearcher:
     
     ##### Compute Representation #####
     def repr_code(self,model):
+        model.eval()
         vecs=None
         use_set = CodeSearchDataset(self.conf['workdir'],
                                       self.conf['use_names'],self.conf['name_len'],
@@ -221,6 +224,7 @@ class CodeSearcher:
             
     
     def search(self,model,query,n_results=10):
+        model.eval()
         desc=sent2indexes(query, self.vocab_desc)#convert desc sentence into word indices
         desc = np.expand_dims(desc, axis=0)
         desc=gVar(desc)
@@ -270,10 +274,10 @@ if __name__ == '__main__':
 
     ##### Define model ######
     logger.info('Build Model')
+    model = JointEmbeder(conf)#initialize the model
     if conf['reload']>0:
-        model= codesearcher.load_model(conf['reload'])
-    else:
-        model = JointEmbeder(conf)#initialize the model
+        codesearcher.load_model(model, conf['reload'])
+        
     model = model.cuda() if torch.cuda.is_available() else model
     
     optimizer = optim.Adam(model.parameters(), lr=conf['lr'])
