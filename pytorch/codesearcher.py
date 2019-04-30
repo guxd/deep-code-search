@@ -276,7 +276,7 @@ if __name__ == '__main__':
     logger.info('Build Model')
     model = JointEmbeder(conf)#initialize the model
     if conf['reload']>0:
-        codesearcher.load_model(model, conf['reload'])
+        searcher.load_model(model, conf['reload'])
         
     model = model.cuda() if torch.cuda.is_available() else model
     
