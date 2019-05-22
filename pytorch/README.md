@@ -45,19 +45,19 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    ### Train
    
    ```bash
-   python codesearcher.py --mode train
+   python main.py --mode train
    ```
    
    ### Code Embedding
    
    ```bash
-   python codesearcher.py --mode repr_code
+   python main.py --mode repr_code
    ```
    
    ### Search
    
    ```bash
-   python codesearcher.py --mode search
+   python main.py --mode search
    ```
 
 

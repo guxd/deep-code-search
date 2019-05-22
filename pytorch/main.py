@@ -19,10 +19,10 @@ import torch
 from torch import optim
 import torch.nn.functional as F
 
-from utils import cos_np, normalize, dot_np, gVar, sent2indexes
+from utils import cos_np, normalize, dot_np, sent2indexes
 from configs import get_config
-from data import load_dict, CodeSearchDataset, load_vecs, save_vecs
-from models import JointEmbeder
+from data_loader import load_dict, CodeSearchDataset, load_vecs, save_vecs
+import models
 
 class CodeSearcher:
     def __init__(self, conf):
@@ -100,7 +100,7 @@ class CodeSearcher:
             itr = 1
             losses=[]
             for names, apis, toks, good_descs, bad_descs in data_loader:
-                names, apis, toks, good_descs, bad_descs = gVar(names), gVar(apis), gVar(toks), gVar(good_descs), gVar(bad_descs)
+                names, apis, toks, good_descs, bad_descs = [tensor.to(self.device) for tensor in [names, apis, toks, good_descs, bad_descs]]
                 loss = model(names, apis, toks, good_descs, bad_descs)
                 losses.append(loss.item())
                 optimizer.zero_grad()
@@ -182,10 +182,10 @@ class CodeSearcher:
         model.eval()
         accs,mrrs,maps,ndcgs=[],[],[],[]
         for names, apis, toks, descs, _ in tqdm(data_loader):
-            names, apis, toks = gVar(names), gVar(apis), gVar(toks)
+            names, apis, toks, descs = [tensor.to(self.device) for tensor in [ names, apis, toks, descs]]
             code_repr=model.code_encoding(names, apis, toks)
             for i in range(poolsize):
-                desc=gVar(descs[i].expand(poolsize,-1))
+                desc=descs[i].expand(poolsize,-1)
                 desc_repr=model.desc_encoding(desc)
                 n_results = K          
                 sims = F.cosine_similarity(code_repr, desc_repr).data.cpu().numpy()
@@ -215,7 +215,7 @@ class CodeSearcher:
         data_loader = torch.utils.data.DataLoader(dataset=use_set, batch_size=1000, 
                                            shuffle=False, drop_last=False, num_workers=1)
         for names,apis,toks in data_loader:
-            names, apis, toks = gVar(names), gVar(apis), gVar(toks)
+            names, apis, toks = [tensor.to(self.device) for tensor in [names, apis, toks]]
             reprs = model.code_encoding(names,apis,toks).data.cpu().numpy()
             vecs=reprs if vecs is None else np.concatenate((vecs, reprs),0)
         vecs = normalize(vecs)
@@ -227,7 +227,7 @@ class CodeSearcher:
         model.eval()
         desc=sent2indexes(query, self.vocab_desc)#convert desc sentence into word indices
         desc = np.expand_dims(desc, axis=0)
-        desc=gVar(desc)
+        desc= torch.from_numpy(desc).to(self.device)
         desc_repr=model.desc_encoding(desc).data.cpu().numpy()
         
         codes=[]
@@ -258,27 +258,31 @@ class CodeSearcher:
     
 def parse_args():
     parser = argparse.ArgumentParser("Train and Test Code Search(Embedding) Model")
+    parser.add_argument('--model', type=str, default='JointEmbeder', help='model name')
     parser.add_argument("--mode", choices=["train","eval","repr_code","search"], default='train',
                         help="The mode to run. The `train` mode trains a model;"
                         " the `eval` mode evaluat models in a test set "
                         " The `repr_code/repr_desc` mode computes vectors"
                         " for a code snippet or a natural language description with a trained model.")
+    parser.add_argument('--gpu_id', type=int, default=0, help='GPU ID')
     parser.add_argument("--verbose",action="store_true", default=True, help="Be verbose")
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = parse_args()
+    device = torch.device(f"cuda:{args.gpu_id}" if torch.cuda.is_available() else "cpu")
     conf = get_config()
     searcher = CodeSearcher(conf)
-
+    searcher.device = device
+    
     ##### Define model ######
     logger.info('Build Model')
-    model = JointEmbeder(conf)#initialize the model
+    model = getattr(models, args.model)(conf)#initialize the model
     if conf['reload']>0:
         searcher.load_model(model, conf['reload'])
         
-    model = model.cuda() if torch.cuda.is_available() else model
+    model = model.to(device)
     
     optimizer = optim.Adam(model.parameters(), lr=conf['lr'])
     

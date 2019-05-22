@@ -45,13 +45,3 @@ def sent2indexes(sentence, vocab):
     return np.array([vocab[word] for word in sentence.strip().split(' ')])
 
 ########################################################################
-
-use_cuda = torch.cuda.is_available()
-
-def gVar(data):
-    tensor=data
-    if isinstance(data, np.ndarray):
-        tensor = torch.from_numpy(data)
-    if use_cuda:
-        tensor=tensor.cuda()
-    return tensor
