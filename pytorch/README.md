@@ -16,7 +16,7 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
 
  - `models.py`: Neural network models for code/desc representation and similarity measure.
  
- - `codesearcher.py`: The main entry for code search, including four sub-tasks: 
+ - `main.py`: The main entry for code search, including four sub-tasks: 
      1) Train: train code/desc representaton models; 
      2) Eval: evaluate the learnt code/desc representation models; 
      3) Code Embedding: encode code into vectors and store them to a file; 
