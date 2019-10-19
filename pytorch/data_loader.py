@@ -7,13 +7,8 @@ import json
 import random
 import numpy as np
 import pickle
+from utils import PAD_ID, SOS_ID, EOS_ID, UNK_ID 
 
-use_cuda = torch.cuda.is_available()
-
-PAD_token = 0
-SOS_token = 1
-EOS_token = 2
-UNK_token = 3
     
 class CodeSearchDataset(data.Dataset):
     """
@@ -53,10 +48,8 @@ class CodeSearchDataset(data.Dataset):
         
     def pad_seq(self, seq, maxlen):
         if len(seq)<maxlen:
-            seq=np.append(seq, [PAD_token]*maxlen)
-            seq=seq[:maxlen]
-        else:
-            seq=seq[:maxlen]
+            seq=np.append(seq, [PAD_ID]*maxlen)
+        seq=seq[:maxlen]
         return seq
     
     def __getitem__(self, offset):          
@@ -83,15 +76,16 @@ class CodeSearchDataset(data.Dataset):
             bad_desc = self.pad_seq(bad_desc, self.desc_len)
 
             return name, apiseq, tokens, good_desc, bad_desc
-        else:
-            return name, apiseq, tokens
+        return name, apiseq, tokens
         
     def __len__(self):
         return self.data_len
+    
+    
 
 def load_dict(filename):
-    #return json.loads(open(filename, "r").readline())
-    return pickle.load(open(filename, 'rb')) 
+    return json.loads(open(filename, "r").readline())
+    #return pickle.load(open(filename, 'rb')) 
 
 def load_vecs(fin):         
     """read vectors (2D numpy array) from a hdf5 file"""

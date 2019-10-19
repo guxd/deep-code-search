@@ -4,6 +4,8 @@ import math
 import torch
 from torch.nn import functional as F
 
+PAD_ID, SOS_ID, EOS_ID, UNK_ID = [0, 1, 2, 3]
+
 def cos_np(data1,data2):
     """numpy implementation of cosine similarity for matrix"""
     dotted = np.dot(data1,np.transpose(data2))
@@ -38,10 +40,22 @@ def timeSince(since, percent):
 
 #######################################################################
 
-def sent2indexes(sentence, vocab):
-    '''sentence: a string
+def sent2indexes(sentence, vocab, max_len=None):
+    '''sentence: a string or list of string
        return: a numpy array of word indices
     '''
-    return np.array([vocab[word] for word in sentence.strip().split(' ')])
+    def convert_sent(sent, vocab):
+        return np.array([vocab.get(word, UNK_ID) for word in sent.split()])
+    if type(sentence) is list:
+        indexes=[convert_sent(sent, vocab) for sent in sentence]
+        sent_lens = [len(idxes) for idxes in indexes]
+        if max_len is None:
+            max_len = max(sent_lens)
+        inds = np.zeros((len(sentence), max_len), dtype=np.int)
+        for i, idxes in enumerate(indexes):
+            inds[i,:len(idxes)]=indexes[i][:max_len]
+        return inds
+    else:
+        return convert_sent(sentence, vocab)
 
 ########################################################################

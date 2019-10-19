@@ -28,9 +28,8 @@ class JointEmbeder(nn.Module):
         self.desc_encoder=SeqEncoder(config['n_words'],config['emb_size'],config['lstm_dims'])
         self.fuse=nn.Linear(config['emb_size']+4*config['lstm_dims'], config['n_hidden'])
         
-        #create a model path to store model info
-        if not os.path.exists(config['workdir']+'models/'):
-            os.makedirs(config['workdir']+'models/')
+        self.optimizer = optim.Adam(self.parameters(), lr=config['lr'])
+        
     
     def code_encoding(self, name, api, tokens):
         name_repr=self.name_encoder(name)
@@ -44,7 +43,9 @@ class JointEmbeder(nn.Module):
         desc_repr=self.desc_encoder(desc)
         return desc_repr
     
-    def forward(self, name, apiseq, tokens, desc_good, desc_bad): #self.data_params['methname_len']
+    def train_batch(self, name, apiseq, tokens, desc_good, desc_bad): #self.data_params['methname_len']
+        self.train()
+        
         batch_size=name.size(0)
         code_repr=self.code_encoding(name, apiseq, tokens)
         desc_good_repr=self.desc_encoding(desc_good)
@@ -54,4 +55,9 @@ class JointEmbeder(nn.Module):
         bad_sim=F.cosine_similarity(code_repr, desc_bad_repr) # [batch_sz x 1]
         
         loss=(self.margin-good_sim+bad_sim).clamp(min=1e-6).mean()
-        return loss
+        
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        
+        return loss.item()
