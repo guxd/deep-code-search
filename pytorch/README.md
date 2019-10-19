@@ -14,6 +14,7 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
 
 ## Code Structures
 
+
  - `models`: Neural network models for code/desc representation and similarity measure.
  - `modules.py`: basic modules for model construction.
  - `main.py`: The main entry for code search, including four sub-tasks: 
