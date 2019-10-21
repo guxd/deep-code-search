@@ -14,18 +14,13 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
 
 ## Code Structures
 
-
- - `models`: Neural network models for code/desc representation and similarity measure.
+ - `models`: neural network models for code/desc representation and similarity measure.
  - `modules.py`: basic modules for model construction.
- - `main.py`: The main entry for code search, including four sub-tasks: 
-     1) Train: train code/desc representaton models; 
-     2) Eval: evaluate the learnt code/desc representation models; 
-     3) Code Embedding: encode code into vectors and store to a file; 
-     4) Search: search relevant code for a given query.
-     
- - `configs.py`: Configurations for models defined in the `models.py`. 
+ - `train.py`: train and validate code/desc representaton models; 
+ - `repr_code.py`: encode code into vectors and store to a file; 
+ - `search.py`: code search
+ - `configs.py`: configurations for models defined in the `models` folder. 
    Each function defines the hyper-parameters for the corresponding model.
-   
  - `data_loader.py`: A PyTorch dataset loader.
  - `utils.py`: Utilities for models and training. 
 
@@ -46,19 +41,19 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    ### Train
    
    ```bash
-   python main.py --mode train --model JointEmbeder
+   python train.py --model JointEmbeder
    ```
    
    ### Code Embedding
    
    ```bash
-   python main.py --mode repr_code --model JointEmbeder
+   python code_repr.py --model JointEmbeder
    ```
    
    ### Search
    
    ```bash
-   python main.py --mode search --model JointEmbeder 
+   python search.py --model JointEmbeder 
    ```
 
 

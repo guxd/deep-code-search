@@ -26,30 +26,46 @@ class JointEmbeder(nn.Module):
         self.api_encoder=SeqEncoder(config['n_words'],config['emb_size'],config['lstm_dims'])
         self.tok_encoder=BOWEncoder(config['n_words'],config['emb_size'],config['n_hidden'])
         self.desc_encoder=SeqEncoder(config['n_words'],config['emb_size'],config['lstm_dims'])
-        self.fuse=nn.Linear(config['emb_size']+4*config['lstm_dims'], config['n_hidden'])
+        #self.fuse1=nn.Linear(config['emb_size']+4*config['lstm_dims'], config['n_hidden'])
+        #self.fuse2 = nn.Sequential(
+        #    nn.Linear(config['emb_size']+4*config['lstm_dims'], config['n_hidden']),
+        #    nn.BatchNorm1d(config['n_hidden'], eps=1e-05, momentum=0.1),
+        #    nn.ReLU(),
+        #    nn.Linear(config['n_hidden'], config['n_hidden']),
+        #)
+        self.w_name = nn.Linear(2*config['lstm_dims'], config['n_hidden'])
+        self.w_api = nn.Linear(2*config['lstm_dims'], config['n_hidden'])
+        self.w_tok = nn.Linear(config['emb_size'], config['n_hidden'])
+        self.fuse3 = nn.Linear(config['n_hidden'], config['n_hidden'])
         
-        self.optimizer = optim.Adam(self.parameters(), lr=config['lr'])
+        self.optimizer = optim.Adam(self.parameters(), lr=config['lr'])        
         
-    
-    def code_encoding(self, name, api, tokens):
-        name_repr=self.name_encoder(name)
-        api_repr=self.api_encoder(api)
-        tok_repr=self.tok_encoder(tokens)
-        code_repr= self.fuse(torch.cat((name_repr, api_repr, tok_repr),1))
-        code_repr=torch.tanh(code_repr)
+        self.init_weights()
+        
+    def init_weights(self):# Initialize Linear Weight 
+        for m in [self.w_name, self.w_api, self.w_tok, self.fuse3]:        
+            m.weight.data.uniform_(-0.05, 0.05)#nn.init.xavier_normal_(m.weight)
+            nn.init.constant_(m.bias, 0.) 
+            
+    def code_encoding(self, name, name_len, api, api_len, tokens, tok_len):
+        name_repr=self.name_encoder(name, name_len)
+        api_repr=self.api_encoder(api, api_len)
+        tok_repr=self.tok_encoder(tokens, tok_len)
+        #code_repr= self.fuse2(torch.cat((name_repr, api_repr, tok_repr),1))
+        code_repr = self.fuse3(torch.tanh(self.w_name(name_repr)+self.w_api(api_repr)+self.w_tok(tok_repr)))
         return code_repr
         
-    def desc_encoding(self, desc):
-        desc_repr=self.desc_encoder(desc)
+    def desc_encoding(self, desc, desc_len):
+        desc_repr=self.desc_encoder(desc, desc_len)
         return desc_repr
     
-    def train_batch(self, name, apiseq, tokens, desc_good, desc_bad): #self.data_params['methname_len']
+    def train_batch(self, name, name_len, apiseq, api_len, tokens, tok_len, desc_good, desc_good_len, desc_bad, desc_bad_len):
         self.train()
         
         batch_size=name.size(0)
-        code_repr=self.code_encoding(name, apiseq, tokens)
-        desc_good_repr=self.desc_encoding(desc_good)
-        desc_bad_repr=self.desc_encoding(desc_bad)
+        code_repr=self.code_encoding(name, name_len, apiseq, api_len, tokens, tok_len)
+        desc_good_repr=self.desc_encoding(desc_good, desc_good_len)
+        desc_bad_repr=self.desc_encoding(desc_bad, desc_bad_len)
     
         good_sim=F.cosine_similarity(code_repr, desc_good_repr)
         bad_sim=F.cosine_similarity(code_repr, desc_bad_repr) # [batch_sz x 1]

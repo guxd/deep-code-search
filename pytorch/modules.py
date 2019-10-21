@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.init as weight_init
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch import optim
 import torch.nn.functional as F
 
@@ -19,7 +20,7 @@ class BOWEncoder(nn.Module):
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(vocab_size, emb_size)
         
-    def forward(self, input, input_lengths=None): 
+    def forward(self, input, input_len=None): 
         batch_size, seq_len =input.size()
         embedded = self.embedding(input)  # input: [batch_sz x seq_len x 1]  embedded: [batch_sz x seq_len x emb_sz]
         embedded= F.dropout(embedded, 0.25, self.training) # [batch_size x seq_len x emb_size]
@@ -40,16 +41,32 @@ class SeqEncoder(nn.Module):
             if w.dim()>1:
                 weight_init.orthogonal_(w)
 
-    def forward(self, input, input_lengths=None): 
-        batch_size, seq_len=input.size()
-        embedded = self.embedding(input)  # input: [batch_sz x seq_len]  embedded: [batch_sz x seq_len x emb_sz]
-        embedded = F.dropout(embedded, 0.25, self.training)
-        rnn_output, hidden = self.lstm(embedded) # out:[b x seq x hid_sz*2](biRNN) 
-        rnn_output = F.dropout(rnn_output, 0.25, self.training)
-        output_pool = F.max_pool1d(rnn_output.transpose(1,2), seq_len).squeeze(2) # [batch_size x hid_size*2]
-        encoding = torch.tanh(output_pool)
+    def forward(self, inputs, input_lens=None): 
+        batch_size, seq_len=inputs.size()
+        inputs = self.embedding(inputs)  # input: [batch_sz x seq_len]  embedded: [batch_sz x seq_len x emb_sz]
+        inputs = F.dropout(inputs, 0.25, self.training)
+        
+        if input_lens is not None:# sort and pack sequence 
+            input_lens_sorted, indices = input_lens.sort(descending=True)
+            inputs_sorted = inputs.index_select(0, indices)        
+            inputs = pack_padded_sequence(inputs_sorted, input_lens_sorted.data.tolist(), batch_first=True)
+            
+        hids, (h_n, c_n) = self.lstm(inputs) # hids:[b x seq x hid_sz*2](biRNN) 
+        
+        if input_lens is not None: # reorder and pad
+            _, inv_indices = indices.sort()
+            hids, lens = pad_packed_sequence(hids, batch_first=True)     
+            hids = hids.index_select(0, inv_indices)
+            h_n = h_n.index_select(1, inv_indices)
+        h_n = h_n.view(self.n_layers, 2, batch_size, self.hidden_size) #[n_layers x n_dirs x batch_sz x hid_sz]
+        h_n = h_n[-1] # get the last layer [n_dirs x batch_sz x hid_sz]
+        encoding = h_n.transpose(1,0).contiguous().view(batch_size,-1) #[batch_sz x (n_dirs*hid_sz)]
+        
+        #pooled_encoding = F.max_pool1d(hids.transpose(1,2), seq_len).squeeze(2) # [batch_size x hid_size*2]
+        #pooled_encoding = torch.tanh(pooled_encoding)
 
-        return encoding
+        return encoding #pooled_encoding
+
     
     
 

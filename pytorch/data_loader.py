@@ -14,12 +14,12 @@ class CodeSearchDataset(data.Dataset):
     """
     Dataset that has only positive samples.
     """
-    def __init__(self, data_dir, f_name, name_len, f_api, api_len, 
-                 f_tokens, tok_len, f_descs=None, desc_len=None):
-        self.name_len=name_len
-        self.api_len=api_len
-        self.tok_len=tok_len
-        self.desc_len=desc_len
+    def __init__(self, data_dir, f_name, max_name_len, f_api, max_api_len, 
+                 f_tokens, max_tok_len, f_descs=None, max_desc_len=None):
+        self.max_name_len=max_name_len
+        self.max_api_len=max_api_len
+        self.max_tok_len=max_tok_len
+        self.max_desc_len=max_desc_len
         # 1. Initialize file path or list of file names.
         """read training data(list of int arrays) from a hdf5 file"""
         self.training=False
@@ -55,32 +55,36 @@ class CodeSearchDataset(data.Dataset):
     def __getitem__(self, offset):          
         len, pos = self.idx_names[offset]['length'], self.idx_names[offset]['pos']
         name = self.names[pos:pos + len].astype('int64')
-        name = self.pad_seq(name, self.name_len)
+        name = self.pad_seq(name, self.max_name_len)
+        name_len=min(int(len),self.max_name_len) 
         
         len, pos = self.idx_apis[offset]['length'], self.idx_apis[offset]['pos']
         apiseq = self.apis[pos:pos+len].astype('int64')
-        apiseq = self.pad_seq(apiseq, self.api_len)
+        apiseq = self.pad_seq(apiseq, self.max_api_len)
+        api_len = min(int(len), self.max_api_len)
 
         len, pos = self.idx_tokens[offset]['length'], self.idx_tokens[offset]['pos']
         tokens = self.tokens[pos:pos+len].astype('int64')
-        tokens = self.pad_seq(tokens, self.tok_len)
+        tokens = self.pad_seq(tokens, self.max_tok_len)
+        tok_len = min(int(len), self.max_tok_len)
 
         if self.training:
             len, pos = self.idx_descs[offset]['length'], self.idx_descs[offset]['pos']
             good_desc = self.descs[pos:pos+len].astype('int64')
-            good_desc = self.pad_seq(good_desc, self.desc_len)
+            good_desc = self.pad_seq(good_desc, self.max_desc_len)
+            good_desc_len = min(int(len), self.max_desc_len)
 
             rand_offset=random.randint(0, self.data_len-1)
             len, pos = self.idx_descs[rand_offset]['length'], self.idx_descs[rand_offset]['pos']
             bad_desc = self.descs[pos:pos+len].astype('int64')
-            bad_desc = self.pad_seq(bad_desc, self.desc_len)
+            bad_desc = self.pad_seq(bad_desc, self.max_desc_len)
+            bad_desc_len=min(int(len), self.max_desc_len)
 
-            return name, apiseq, tokens, good_desc, bad_desc
-        return name, apiseq, tokens
+            return name, name_len, apiseq, api_len, tokens, tok_len, good_desc, good_desc_len, bad_desc, bad_desc_len
+        return name, name_len, apiseq, api_len, tokens, tok_len
         
     def __len__(self):
         return self.data_len
-    
     
 
 def load_dict(filename):

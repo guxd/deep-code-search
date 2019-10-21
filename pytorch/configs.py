@@ -1,7 +1,6 @@
 
 def config_JointEmbeder():   
     conf = {
-        'data_path':'./data/github/', # location of the data corpus
         # data_params
         'dataset_name':'CodeSearchDataset', # name of dataset to specify a data loader
             #training data
@@ -38,18 +37,9 @@ def config_JointEmbeder():
             'batch_size': 64,
             'chunk_size':100000,
             'nb_epoch': 5,
-            'validation_split': 0.2,
             #'optimizer': 'adam',
             'lr':1e-3,
-            'valid_every': 1000,
             'n_eval': 100,
-            'evaluate_all_threshold': {
-                'mode': 'all',
-                'top1': 0.4,
-            },
-            'log_every': 100,
-            'save_every': 5000,
-            'reload':-1,#970,#epoch that the model is reloaded from . If reload=0, then train from scratch
         
 
         # model_params
@@ -57,7 +47,7 @@ def config_JointEmbeder():
             'n_hidden': 1000,#number of hidden dimension of code/desc representation
             # recurrent
             'lstm_dims': 500, # * 2
-            'init_embed_weights_methname': None,#'word2vec_100_methname.h5', 
+            'init_embed_weights_name': None,#'word2vec_100_methname.h5', 
             'init_embed_weights_tokens': None,#'word2vec_100_tokens.h5', 
             'init_embed_weights_desc': None,#'word2vec_100_desc.h5',           
             'margin': 0.05,
@@ -65,7 +55,6 @@ def config_JointEmbeder():
          
     }
     return conf
-
 
 
 
