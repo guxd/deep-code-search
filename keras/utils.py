@@ -23,3 +23,20 @@ def cos_np_for_normalized(data1,data2):
     """cosine similarity for normalized vectors"""
     return np.dot(data1,np.transpose(data2))
 
+
+##### Converting / reverting #####
+def convert(vocab, words):
+    """convert words into indices"""        
+    if type(words) == str:
+        words = words.strip().lower().split(' ')
+    return [vocab.get(w, 0) for w in words]
+def revert(vocab, indices):
+    """revert indices into words"""
+    ivocab = dict((v, k) for k, v in vocab.items())
+    return [ivocab.get(i, 'UNK') for i in indices]
+
+##### Padding #####
+def pad(data, len=None):
+    from tensorflow.keras.preprocessing.sequence import pad_sequences
+    return pad_sequences(data, maxlen=len, padding='post', truncating='post', value=0)
+

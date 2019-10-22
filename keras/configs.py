@@ -1,7 +1,6 @@
 
-def get_config():   
-    conf = {
-        'workdir': './data/github/',
+def config_JointEmbeddingModel():   
+    config = {
         'data_params':{
             #training data
             'train_methname':'train.methname.h5',
@@ -46,12 +45,11 @@ def get_config():
                 'mode': 'all',
                 'top1': 0.4,
             },
-            'save_every': 5,
-            'reload':500, #epoch that the model is reloaded from . If reload=0, then train from scratch
+            'save_every': 10,
+            'reload':0, #epoch that the model is reloaded from . If reload=0, then train from scratch
         },
 
         'model_params': {
-            'model_name':'JointEmbeddingModel',
             'n_embed_dims': 100,
             'n_hidden': 400,#number of hidden dimension of code/desc representation
             # recurrent
@@ -63,7 +61,7 @@ def get_config():
             'sim_measure':'cos',#similarity measure: gesd, cosine, aesd
         }        
     }
-    return conf
+    return config
 
 
 

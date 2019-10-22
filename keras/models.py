@@ -1,18 +1,15 @@
-from __future__ import print_function
-from __future__ import absolute_import
 import os
-from keras.engine import Input
-from keras.layers import Concatenate, Dot, Embedding, Dropout, Lambda, Activation, LSTM, Dense
-from keras import backend as K
-from keras.models import Model
-from keras.utils import plot_model
+#from tensorflow.keras.engine import Input
+from tensorflow.keras.layers import Input, Concatenate, Dot, Embedding, Dropout, Lambda, Activation, LSTM, Dense
+from tensorflow.keras import backend as K
+from tensorflow.keras.models import Model
+from tensorflow.keras.utils import plot_model
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
     
 class JointEmbeddingModel:
     def __init__(self, config):
-        self.config = config
         self.model_params = config.get('model_params', dict())
         self.data_params = config.get('data_params',dict())
         self.methname = Input(shape=(self.data_params['methname_len'],), dtype='int32', name='i_methname')
@@ -26,11 +23,8 @@ class JointEmbeddingModel:
         self._desc_repr_model=None        
         self._sim_model = None        
         self._training_model = None
-        #self.prediction_model = None
-        
-        #create a model path to store model info
-        if not os.path.exists(self.config['workdir']+'models/'+self.model_params['model_name']+'/'):
-            os.makedirs(self.config['workdir']+'models/'+self.model_params['model_name']+'/')
+        #self.prediction_model = None       
+
     
     def build(self):
         '''
@@ -43,8 +37,8 @@ class JointEmbeddingModel:
         
         ## method name representation ##
         #1.embedding
-        init_emb_weights = np.load(self.config['workdir']+self.model_params['init_embed_weights_methname']) if self.model_params['init_embed_weights_methname'] is not None else None
-        init_emb_weights = init_emb_weights if init_emb_weights is None else [init_emb_weights]
+        init_emb_weights = np.load(self.model_params['init_embed_weights_methname']) if self.model_params['init_embed_weights_methname'] is not None else None
+        if init_emb_weights is not None: init_emb_weights = [init_emb_weights]
         embedding = Embedding(input_dim=self.data_params['n_words'],
                               output_dim=self.model_params.get('n_embed_dims', 100),
                               weights=init_emb_weights,
@@ -102,8 +96,8 @@ class JointEmbeddingModel:
         
         ## Tokens Representation ##
         #1.embedding
-        init_emb_weights = np.load(self.config['workdir']+self.model_params['init_embed_weights_tokens']) if self.model_params['init_embed_weights_tokens'] is not None else None
-        init_emb_weights = init_emb_weights if init_emb_weights is None else [init_emb_weights]
+        init_emb_weights = np.load(self.model_params['init_embed_weights_tokens']) if self.model_params['init_embed_weights_tokens'] is not None else None
+        if init_emb_weights is not None: init_emb_weights = [init_emb_weights]
         embedding = Embedding(input_dim=self.data_params['n_words'],
                               output_dim=self.model_params.get('n_embed_dims', 100),
                               weights=init_emb_weights,
@@ -126,14 +120,7 @@ class JointEmbeddingModel:
         code_repr=Dense(self.model_params.get('n_hidden',400),activation='tanh',name='dense_coderepr')(merged_code_repr)
         
         
-        self._code_repr_model=Model(inputs=[methname,apiseq,tokens],outputs=[code_repr],name='code_repr_model')
-        print('\nsummary of code representation model')
-        self._code_repr_model.summary()
-        fname=self.config['workdir']+'models/'+self.model_params['model_name']+'/_code_repr_model.png'
-        #plot_model(self._code_repr_model, show_shapes=True, to_file=fname)
-        
-        
-        
+        self._code_repr_model=Model(inputs=[methname,apiseq,tokens],outputs=[code_repr],name='code_repr_model')     
         
         
         '''
@@ -143,8 +130,8 @@ class JointEmbeddingModel:
         logger.debug('Building Desc Representation Model')
         desc = Input(shape=(self.data_params['desc_len'],), dtype='int32', name='desc')
         #1.embedding
-        init_emb_weights = np.load(self.config['workdir']+self.model_params['init_embed_weights_desc']) if self.model_params['init_embed_weights_desc'] is not None else None
-        init_emb_weights = init_emb_weights if init_emb_weights is None else [init_emb_weights]
+        init_emb_weights = np.load(self.model_params['init_embed_weights_desc']) if self.model_params['init_embed_weights_desc'] is not None else None
+        if init_emb_weights is not None: init_emb_weights = [init_emb_weights]
         embedding = Embedding(input_dim=self.data_params['n_words'],
                               output_dim=self.model_params.get('n_embed_dims', 100),
                               weights=init_emb_weights,
@@ -171,10 +158,6 @@ class JointEmbeddingModel:
         desc_repr = activation(desc_pool)
         
         self._desc_repr_model=Model(inputs=[desc],outputs=[desc_repr],name='desc_repr_model')
-        print('\nsummary of desc representation model')
-        self._desc_repr_model.summary()
-        fname=self.config['workdir']+'models/'+self.model_params['model_name']+'/_desc_repr_model.png'
-        #plot_model(self._desc_repr_model, show_shapes=True, to_file=fname)               
         
             
         """
@@ -187,10 +170,7 @@ class JointEmbeddingModel:
         
         sim_model = Model(inputs=[methname,apiseq,tokens,desc], outputs=[cos_sim],name='sim_model')   
         self._sim_model=sim_model  #for model evaluation  
-        print ("\nsummary of similarity model")
-        self._sim_model.summary() 
-        fname=self.config['workdir']+'models/'+self.model_params['model_name']+'/_sim_model.png'
-        #plot_model(self._sim_model, show_shapes=True, to_file=fname)
+
         
         
         '''
@@ -204,10 +184,7 @@ class JointEmbeddingModel:
         logger.debug('Building training model')
         self._training_model=Model(inputs=[self.methname,self.apiseq,self.tokens,self.desc_good,self.desc_bad],
                                    outputs=[loss],name='training_model')
-        print ('\nsummary of training model')
-        self._training_model.summary()      
-        fname=self.config['workdir']+'models/'+self.model_params['model_name']+'/_training_model.png'
-        #plot_model(self._training_model, show_shapes=True, to_file=fname)     
+   
 
     def compile(self, optimizer, **kwargs):
         logger.info('compiling models')
@@ -216,6 +193,21 @@ class JointEmbeddingModel:
         self._training_model.compile(loss=lambda y_true, y_pred: y_pred+y_true-y_true, optimizer=optimizer, **kwargs)
         #+y_true-y_true is for avoiding an unused input warning, it can be simply +y_true since y_true is always 0 in the training set.
         self._sim_model.compile(loss='binary_crossentropy', optimizer=optimizer, **kwargs)
+        
+    def summary(self, export_path):
+        print('Summary of the code representation model')
+        self._code_repr_model.summary()
+        #plot_model(self._code_repr_model, show_shapes=True, to_file= export_path+'code_repr_model.png')  
+        print('Summary of the desc representation model')
+        self._desc_repr_model.summary()
+        #plot_model(self._desc_repr_model, show_shapes=True, to_file=export_path+'desc_repr_model.png') 
+        print ("Summary of the similarity model")
+        self._sim_model.summary() 
+        #plot_model(self._sim_model, show_shapes=True, to_file= export_path+'sim_model.png')
+        print ('Summary of the training model')
+        self._training_model.summary()      
+        #plot_model(self._training_model, show_shapes=True, to_file=export_path+'training_model.png')  
+              
 
     def fit(self, x, **kwargs):
         assert self._training_model is not None, 'Must compile the model before fitting data'
