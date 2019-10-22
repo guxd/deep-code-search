@@ -1,27 +1,19 @@
 import os
 import sys
-import random
 import traceback
-from datetime import datetime
 import numpy as np
-import math
 import argparse
-from datashape.coretypes import real
-random.seed(42)
 import threading
 import codecs
-from tqdm import tqdm
-
 import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 from tensorboardX import SummaryWriter # install tensorboardX (pip install tensorboardX) before importing this package
 
 import torch
-import torch.nn.functional as F
 
 from utils import cos_np, normalize, dot_np, sent2indexes
-from data_loader import load_dict, load_vecs, save_vecs
+from data_loader import load_dict, load_vecs
 import models, configs
   
 codevecs, codebase = [], []
@@ -53,10 +45,10 @@ def search(config, model, vocab, query, n_results=10):
     model.eval()
     device = next(model.parameters()).device
     desc=sent2indexes(query, vocab_desc, config['desc_len'])#convert query into word indices
-    desc = np.expand_dims(desc, axis=0)
-    desc= torch.from_numpy(desc).to(device)
+    desc= torch.from_numpy(desc).unsqueeze(0).to(device)
+    desc_len = torch.LongTensor(1).fill_(len(query.split())).clamp(max=config['desc_len']).to(device)
     with torch.no_grad():
-        desc_repr=model.desc_encoding(desc).data.cpu().numpy()
+        desc_repr=model.desc_encoding(desc, desc_len).data.cpu().numpy()
 
     codes, sims =[], []
     threads=[]
@@ -69,13 +61,13 @@ def search(config, model, vocab, query, n_results=10):
         t.join()
     return codes,sims
 
-def search_thread(codes,sims,desc_repr,codevecs, i, n_results):        
+def search_thread(codes, sims, desc_repr, codevecs, i, n_results):        
 #1. compute code similarities
     chunk_sims=dot_np(normalize(desc_repr),codevecs) 
     chunk_sims = chunk_sims[0] # squeeze batch dim
 
 #2. select the top K results
-    negsims=np.negative(chunk_sims)
+    negsims = np.negative(chunk_sims)
     maxinds = np.argpartition(negsims, kth=n_results-1)
     maxinds = maxinds[:n_results]        
     chunk_codes=[codebase[i][k] for k in maxinds]
@@ -87,7 +79,7 @@ def parse_args():
     parser = argparse.ArgumentParser("Train and Test Code Search(Embedding) Model")
     parser.add_argument('--data_path', type=str, default='./data/', help='location of the data corpus')
     parser.add_argument('--model', type=str, default='JointEmbeder', help='model name')
-    parser.add_argument('--dataset', type=str, default='github', help='name of dataset.java, python')
+    parser.add_argument('-d', '--dataset', type=str, default='github', help='name of dataset.java, python')
     parser.add_argument('--reload_from', type=int, default=-1, help='epoch to reload from')
     parser.add_argument('-g', '--gpu_id', type=int, default=0, help='GPU ID')
     parser.add_argument('-v', "--visual",action="store_true", default=False, help="Visualize training status in tensorboard")
@@ -102,7 +94,7 @@ if __name__ == '__main__':
     ##### Define model ######
     logger.info('Constructing Model..')
     model = getattr(models, args.model)(config)#initialize the model
-    ckpt=f'./output/{args.model}/{args.dataset}/models/model_epo{args.reload_from}.pkl'
+    ckpt=f'./output/{args.model}/{args.dataset}/models/epo{args.reload_from}.h5'
     model.load_state_dict(torch.load(ckpt))
     
     data_path = args.data_path+args.dataset+'/'
@@ -120,6 +112,7 @@ if __name__ == '__main__':
             print("Exception while parsing your input:")
             traceback.print_exc()
             break
+        query = query.lower().replace('how to ', '').replace('how do i ', '').replace('how can i ', '').replace('?', '').strip()
         codes,sims = search(config, model, vocab_desc, query, n_results)
         zipped=zip(codes, sims)
         results = '\n\n'.join(map(str,zipped)) #combine the result into a returning string
