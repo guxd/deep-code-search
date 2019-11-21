@@ -39,23 +39,31 @@ def timeSince(since, percent):
     return '%s<%s'%(asMinutes(s), asMinutes(rs))
 
 #######################################################################
-
-def sent2indexes(sentence, vocab, max_len=None):
+import nltk
+try: nltk.word_tokenize("hello world")
+except LookupError: nltk.download('punkt')
+    
+def sent2indexes(sentence, vocab, maxlen):
     '''sentence: a string or list of string
        return: a numpy array of word indices
-    '''
-    def convert_sent(sent, vocab):
-        return np.array([vocab.get(word, UNK_ID) for word in sent.split()])
+    '''      
+    def convert_sent(sent, vocab, maxlen):
+        idxes = np.zeros(maxlen, dtype=np.int64)
+        idxes.fill(PAD_ID)
+        tokens = nltk.word_tokenize(sent.strip())
+        idx_len = min(len(tokens), maxlen)
+        for i in range(idx_len): idxes[i] = vocab.get(tokens[i], UNK_ID)
+        return idxes, idx_len
     if type(sentence) is list:
-        indexes=[convert_sent(sent, vocab) for sent in sentence]
-        sent_lens = [len(idxes) for idxes in indexes]
-        if max_len is None:
-            max_len = max(sent_lens)
-        inds = np.zeros((len(sentence), max_len), dtype=np.int)
-        for i, idxes in enumerate(indexes):
-            inds[i,:len(idxes)]=indexes[i][:max_len]
-        return inds
+        inds, lens = None, None
+        for sent in sentence:
+            idxes, idx_len = convert_sent(sent, vocab, maxlen)
+            idxes, idx_len = np.expand_dims(idxes, 0), np.array([idx_len])
+            inds = idxes if inds is None else np.concatenate((inds, idxes))
+            lens = idx_len if lens is None else np.concatenate((lens, idx_len))
+        return inds, lens
     else:
-        return convert_sent(sentence, vocab)
+        inds, lens = sent2indexes([sentence], vocab, maxlen)
+        return inds[0], lens[0]
 
 ########################################################################

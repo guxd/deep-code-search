@@ -23,7 +23,7 @@ def repr_code(args):
     logger.info('Constructing Model..')
     model = getattr(models, args.model)(config)#initialize the model
     if args.reload_from>0:
-        model.load_state_dict(torch.load(f'./output/{args.model}/{args.dataset}/models/epo{args.reload_from}.h5'))       
+        model.load_state_dict(torch.load(f'./output/{args.model}/{args.dataset}/models/epo{args.reload_from}.h5', map_location=device))       
     model = model.to(device)   
     model.eval()
 

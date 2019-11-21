@@ -17,8 +17,8 @@ from tensorboardX import SummaryWriter # install tensorboardX (pip install tenso
 import torch
 import torch.nn.functional as F
 
-from data_loader import CodeSearchDataset
-import models, configs     
+import models, configs, data_loader 
+from data_loader import *
 
 def train(args):
     fh = logging.FileHandler(f"./output/{args.model}/{args.dataset}/logs.txt")
@@ -36,9 +36,9 @@ def train(args):
     def save_model(model, epoch):
         torch.save(model.state_dict(), f'./output/{args.model}/{args.dataset}/models/epo{epoch}.h5')
 
-    def load_model(model, epoch):
+    def load_model(model, epoch, to_device):
         assert os.path.exists(f'./output/{args.model}/{args.dataset}/models/epo{epoch}.h5'), f'Weights at epoch {epoch} not found'
-        model.load_state_dict(torch.load(f'./output/{args.model}/{args.dataset}/models/epo{epoch}.h5'))
+        model.load_state_dict(torch.load(f'./output/{args.model}/{args.dataset}/models/epo{epoch}.h5', map_location=to_device))
 
     config=getattr(configs, 'config_'+args.model)()
     
@@ -64,13 +64,13 @@ def train(args):
     logger.info('Constructing Model..')
     model = getattr(models, args.model)(config)#initialize the model
     if args.reload_from>0:
-        load_model(model, args.reload_from)        
+        load_model(model, args.reload_from, device)        
     model = model.to(device)
 
     n_iters = len(data_loader)
     itr_global = args.reload_from+1
     model.train() 
-    for epoch in range(int(args.reload_from/n_iters)+1, config['nb_epoch']): 
+    for epoch in range(int(args.reload_from/n_iters)+1, config['nb_epoch']+1): 
         losses=[]
         for batch in data_loader:
             batch_gpu = [tensor.to(device) for tensor in batch]
@@ -86,7 +86,7 @@ def train(args):
 
             if itr_global % args.valid_every == 0:
                 logger.info("validating..")                  
-                acc1, mrr, map1, ndcg = validate(valid_set, model,1000,1)  
+                acc1, mrr, map1, ndcg = validate(valid_set, model,10000, 1)  
                 logger.info(f'ACC={acc1}, MRR={mrr}, MAP={map1}, nDCG={ndcg}')
                 if tb_writer is not None:
                     tb_writer.add_scalar('acc', acc1, itr_global)
@@ -147,6 +147,7 @@ def validate(valid_set, model, poolsize, K):
 
     accs, mrrs, maps, ndcgs=[],[],[],[]
     for batch in tqdm(data_loader):
+        # names, name_len, apis, api_len, toks, tok_len, descs, desc_len, bad_descs, bad_desc_len
         code_batch = [tensor.to(device) for tensor in batch[:6]]
         desc_batch = [tensor.to(device) for tensor in batch[6:8]]
         with torch.no_grad():
@@ -181,7 +182,7 @@ def parse_args():
     
     # Evaluation Arguments
     parser.add_argument('--log_every', type=int, default=100, help='interval to log autoencoder training results')
-    parser.add_argument('--valid_every', type=int, default=1000, help='interval to validation')
+    parser.add_argument('--valid_every', type=int, default=5000, help='interval to validation')
     parser.add_argument('--save_every', type=int, default=10000, help='interval to evaluation to concrete results')
     parser.add_argument('--seed', type=int, default=1111, help='random seed')
     

@@ -44,9 +44,9 @@ def load_codevecs(vec_path, chunk_size=2000000):
 def search(config, model, vocab, query, n_results=10):
     model.eval()
     device = next(model.parameters()).device
-    desc=sent2indexes(query, vocab_desc, config['desc_len'])#convert query into word indices
+    desc, desc_len =sent2indexes(query, vocab_desc, config['desc_len'])#convert query into word indices
     desc= torch.from_numpy(desc).unsqueeze(0).to(device)
-    desc_len = torch.LongTensor(1).fill_(len(query.split())).clamp(max=config['desc_len']).to(device)
+    desc_len = torch.zeros(1, dtype=torch.long, device=device).fill_(desc_len).clamp(max=config['desc_len'])
     with torch.no_grad():
         desc_repr=model.desc_encoding(desc, desc_len).data.cpu().numpy()
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     logger.info('Constructing Model..')
     model = getattr(models, args.model)(config)#initialize the model
     ckpt=f'./output/{args.model}/{args.dataset}/models/epo{args.reload_from}.h5'
-    model.load_state_dict(torch.load(ckpt))
+    model.load_state_dict(torch.load(ckpt, map_location=device))
     
     data_path = args.data_path+args.dataset+'/'
     

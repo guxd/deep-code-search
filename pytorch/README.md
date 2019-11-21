@@ -28,7 +28,7 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
 ## Usage
 
    ### Data Preparation
-  The `/data` folder provides a small sample dataset for quick deploying.  
+  The `/data` folder provides a small dummy dataset for quick deployment.  
   To train and test our model:
   
   1) Download and unzip real dataset from [Google Drive](https://drive.google.com/drive/folders/1GZYLT_lzhlVczXjD6dgwVUvDDPHMB6L7?usp=sharing) or [Baidu Pan](https://pan.baidu.com/s/1U_MtFXqq0C-Qh8WUFAWGvg) for Chinese users.

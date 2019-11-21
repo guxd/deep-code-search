@@ -43,7 +43,7 @@ def config_JointEmbeder():
         
 
         # model_params
-            'emb_size': 100,
+            'emb_size': 200,
             'n_hidden': 1000,#number of hidden dimension of code/desc representation
             # recurrent
             'lstm_dims': 500, # * 2
@@ -55,9 +55,6 @@ def config_JointEmbeder():
          
     }
     return conf
-
-
-
 
 
 
