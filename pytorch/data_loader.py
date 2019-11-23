@@ -25,19 +25,19 @@ class CodeSearchDataset(data.Dataset):
         self.training=False
         print("loading data...")
         table_name = tables.open_file(data_dir+f_name)
-        self.names = table_name.get_node('/phrases')
-        self.idx_names = table_name.get_node('/indices')
+        self.names = table_name.get_node('/phrases')[:].astype(np.long)
+        self.idx_names = table_name.get_node('/indices')[:]
         table_api = tables.open_file(data_dir+f_api)
-        self.apis = table_api.get_node('/phrases')
-        self.idx_apis = table_api.get_node('/indices')
+        self.apis = table_api.get_node('/phrases')[:].astype(np.long)
+        self.idx_apis = table_api.get_node('/indices')[:]
         table_tokens = tables.open_file(data_dir+f_tokens)
-        self.tokens = table_tokens.get_node('/phrases')
-        self.idx_tokens = table_tokens.get_node('/indices')
+        self.tokens = table_tokens.get_node('/phrases')[:].astype(np.long)
+        self.idx_tokens = table_tokens.get_node('/indices')[:]
         if f_descs is not None:
             self.training=True
             table_desc = tables.open_file(data_dir+f_descs)
-            self.descs = table_desc.get_node('/phrases')
-            self.idx_descs = table_desc.get_node('/indices')
+            self.descs = table_desc.get_node('/phrases')[:].astype(np.long)
+            self.idx_descs = table_desc.get_node('/indices')[:]
         
         assert self.idx_names.shape[0] == self.idx_apis.shape[0]
         assert self.idx_apis.shape[0] == self.idx_tokens.shape[0]
@@ -48,37 +48,38 @@ class CodeSearchDataset(data.Dataset):
         
     def pad_seq(self, seq, maxlen):
         if len(seq)<maxlen:
-            seq=np.append(seq, [PAD_ID]*maxlen)
+            # !!!!! numpy appending is slow. Try to optimize the padding
+            seq=np.append(seq, [PAD_ID]*(maxlen-len(seq)))
         seq=seq[:maxlen]
         return seq
     
     def __getitem__(self, offset):          
         len, pos = self.idx_names[offset]['length'], self.idx_names[offset]['pos']
-        name = self.names[pos:pos + len].astype('int64')
-        name = self.pad_seq(name, self.max_name_len)
         name_len=min(int(len),self.max_name_len) 
+        name = self.names[pos: pos+name_len]
+        name = self.pad_seq(name, self.max_name_len)
         
         len, pos = self.idx_apis[offset]['length'], self.idx_apis[offset]['pos']
-        apiseq = self.apis[pos:pos+len].astype('int64')
-        apiseq = self.pad_seq(apiseq, self.max_api_len)
         api_len = min(int(len), self.max_api_len)
-
+        apiseq = self.apis[pos:pos+api_len]
+        apiseq = self.pad_seq(apiseq, self.max_api_len)
+        
         len, pos = self.idx_tokens[offset]['length'], self.idx_tokens[offset]['pos']
-        tokens = self.tokens[pos:pos+len].astype('int64')
-        tokens = self.pad_seq(tokens, self.max_tok_len)
         tok_len = min(int(len), self.max_tok_len)
+        tokens = self.tokens[pos:pos+tok_len]
+        tokens = self.pad_seq(tokens, self.max_tok_len)
 
         if self.training:
             len, pos = self.idx_descs[offset]['length'], self.idx_descs[offset]['pos']
-            good_desc = self.descs[pos:pos+len].astype('int64')
-            good_desc = self.pad_seq(good_desc, self.max_desc_len)
             good_desc_len = min(int(len), self.max_desc_len)
-
+            good_desc = self.descs[pos:pos+good_desc_len]
+            good_desc = self.pad_seq(good_desc, self.max_desc_len)
+            
             rand_offset=random.randint(0, self.data_len-1)
             len, pos = self.idx_descs[rand_offset]['length'], self.idx_descs[rand_offset]['pos']
-            bad_desc = self.descs[pos:pos+len].astype('int64')
-            bad_desc = self.pad_seq(bad_desc, self.max_desc_len)
             bad_desc_len=min(int(len), self.max_desc_len)
+            bad_desc = self.descs[pos:pos+bad_desc_len]
+            bad_desc = self.pad_seq(bad_desc, self.max_desc_len)
 
             return name, name_len, apiseq, api_len, tokens, tok_len, good_desc, good_desc_len, bad_desc, bad_desc_len
         return name, name_len, apiseq, api_len, tokens, tok_len

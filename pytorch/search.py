@@ -25,20 +25,23 @@ def load_codebase(code_path, chunk_size=2000000):
     """
     logger.info(f'Loading codebase (chunk size={chunk_size})..')
     codebase= []
-    codes=codecs.open(code_path).readlines()
-        #use codecs to read in case of encoding problem
-    for i in range(0,len(codes), chunk_size):
-        codebase.append(codes[i:i+chunk_size]) 
+    codes = codecs.open(code_path, encoding='latin-1').readlines() # use codecs to read in case of encoding problem
+    for i in range(0, len(codes), chunk_size):
+        codebase.append(codes[i: i+chunk_size]) 
     return codebase
 
 ### Results Data ###
 def load_codevecs(vec_path, chunk_size=2000000):
-    logger.debug('Loading code vectors..')       
+    logger.debug(f'Loading code vectors (chunk size={chunk_size})..')       
     """read vectors (2D numpy array) from a hdf5 file"""
     codevecs=[]
-    reprs=load_vecs(vec_path)
-    for i in range(0,reprs.shape[0], chunk_size):
-        codevecs.append(reprs[i:i+chunk_size])
+    chunk_id = 0
+    chunk_path = f"{vec_path[:-3]}_part{chunk_id}.h5"
+    while os.path.exists(chunk_path):
+        reprs=load_vecs(chunk_path)
+        codevecs.append(reprs)
+        chunk_id+=1
+        chunk_path = f"{vec_path[:-3]}_part{chunk_id}.h5"
     return codevecs
 
 def search(config, model, vocab, query, n_results=10):
@@ -69,7 +72,7 @@ def search_thread(codes, sims, desc_repr, codevecs, i, n_results):
 #2. select the top K results
     negsims = np.negative(chunk_sims)
     maxinds = np.argpartition(negsims, kth=n_results-1)
-    maxinds = maxinds[:n_results]        
+    maxinds = maxinds[:n_results]  
     chunk_codes=[codebase[i][k] for k in maxinds]
     chunk_sims=chunk_sims[maxinds]
     codes.extend(chunk_codes)
@@ -81,6 +84,8 @@ def parse_args():
     parser.add_argument('--model', type=str, default='JointEmbeder', help='model name')
     parser.add_argument('-d', '--dataset', type=str, default='github', help='name of dataset.java, python')
     parser.add_argument('--reload_from', type=int, default=-1, help='epoch to reload from')
+    parser.add_argument('--chunk_size', type=int, default=2000000, help='codebase and code vector are stored in many chunks. '\
+                         'Note: should be consistent with the same argument in the repr_code.py')
     parser.add_argument('-g', '--gpu_id', type=int, default=0, help='GPU ID')
     parser.add_argument('-v', "--visual",action="store_true", default=False, help="Visualize training status in tensorboard")
     return parser.parse_args()
@@ -100,10 +105,11 @@ if __name__ == '__main__':
     data_path = args.data_path+args.dataset+'/'
     
     vocab_desc=load_dict(data_path+config['vocab_desc'])
-    #search code based on a desc
-    codevecs = load_codevecs(data_path+config['use_codevecs'])
-    codebase = load_codebase(data_path+config['use_codebase'])
-        
+    codebase = load_codebase(data_path+config['use_codebase'], args.chunk_size)
+    codevecs = load_codevecs(data_path+config['use_codevecs'], args.chunk_size)
+    assert len(codebase)==len(codevecs), \
+         "inconsistent number of chunks, check whether the specified files for codebase and code vectors are correct!"    
+    
     while True:
         try:
             query = input('Input Query: ')
