@@ -28,6 +28,13 @@ def load_codebase(code_path, chunk_size=2000000):
     codes = codecs.open(code_path, encoding='latin-1').readlines() # use codecs to read in case of encoding problem
     for i in range(0, len(codes), chunk_size):
         codebase.append(codes[i: i+chunk_size]) 
+    '''
+    import subprocess
+    n_lines = int(subprocess.check_output(["wc", "-l", code_path], universal_newlines=True).split()[0])
+    for i in range(1, n_lines+1, chunk_size):
+        codecs = subprocess.check_output(["sed",'-n',f'{i},{i+chunk_size}p', code_path]).split()
+        codebase.append(codecs)
+   '''
     return codebase
 
 ### Results Data ###
@@ -48,35 +55,34 @@ def search(config, model, vocab, query, n_results=10):
     model.eval()
     device = next(model.parameters()).device
     desc, desc_len =sent2indexes(query, vocab_desc, config['desc_len'])#convert query into word indices
-    desc= torch.from_numpy(desc).unsqueeze(0).to(device)
-    desc_len = torch.zeros(1, dtype=torch.long, device=device).fill_(desc_len).clamp(max=config['desc_len'])
+    desc = torch.from_numpy(desc).unsqueeze(0).to(device)
+    desc_len = torch.from_numpy(desc_len).clamp(max=config['desc_len']).to(device)
     with torch.no_grad():
-        desc_repr=model.desc_encoding(desc, desc_len).data.cpu().numpy()
-
-    codes, sims =[], []
-    threads=[]
+        desc_repr = model.desc_encoding(desc, desc_len).data.cpu().numpy()
+        desc_repr = normalize(desc_repr)
+    results =[]
+    threads = []
     for i, codevecs_chunk in enumerate(codevecs):
-        t = threading.Thread(target=search_thread, args = (codes, sims, desc_repr, codevecs_chunk, i, n_results))
+        t = threading.Thread(target=search_thread, args = (results, desc_repr, codevecs_chunk, i, n_results))
         threads.append(t)
     for t in threads:
         t.start()
     for t in threads:#wait until all sub-threads have completed
         t.join()
-    return codes,sims
+    return results
 
-def search_thread(codes, sims, desc_repr, codevecs, i, n_results):        
+def search_thread(results, desc_repr, codevecs, i, n_results):        
 #1. compute code similarities
-    chunk_sims=dot_np(normalize(desc_repr),codevecs) 
+    chunk_sims = dot_np(desc_repr,codevecs) 
     chunk_sims = chunk_sims[0] # squeeze batch dim
 
 #2. select the top K results
     negsims = np.negative(chunk_sims)
     maxinds = np.argpartition(negsims, kth=n_results-1)
     maxinds = maxinds[:n_results]  
-    chunk_codes=[codebase[i][k] for k in maxinds]
-    chunk_sims=chunk_sims[maxinds]
-    codes.extend(chunk_codes)
-    sims.extend(chunk_sims)
+    chunk_codes = [codebase[i][k] for k in maxinds]
+    chunk_sims = chunk_sims[maxinds]
+    results.extend(zip(chunk_codes, chunk_sims))
     
 def parse_args():
     parser = argparse.ArgumentParser("Train and Test Code Search(Embedding) Model")
@@ -119,7 +125,6 @@ if __name__ == '__main__':
             traceback.print_exc()
             break
         query = query.lower().replace('how to ', '').replace('how do i ', '').replace('how can i ', '').replace('?', '').strip()
-        codes,sims = search(config, model, vocab_desc, query, n_results)
-        zipped=zip(codes, sims)
-        results = '\n\n'.join(map(str,zipped)) #combine the result into a returning string
+        results = search(config, model, vocab_desc, query, n_results)
+        results = '\n\n'.join(map(str,results)) #combine the result into a returning string
         print(results)

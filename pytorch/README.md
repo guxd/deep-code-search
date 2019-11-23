@@ -7,9 +7,17 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
 * Python 3.6
 * PyTorch 
 * tqdm
+* amp
 
  ```
  pip install -r requirements.txt
+ ```
+ 
+ [optional] Install apex for fp16 training:
+ ```
+ $ git clone https://github.com/NVIDIA/apex
+ $ cd apex
+ $ pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
  ```
 
 ## Code Structures
@@ -17,8 +25,8 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
  - `models`: neural network models for code/desc representation and similarity measure.
  - `modules.py`: basic modules for model construction.
  - `train.py`: train and validate code/desc representaton models; 
- - `repr_code.py`: encode code into vectors and store to a file; 
- - `search.py`: code search
+ - `repr_code.py`: encode code into vectors and store them to a file; 
+ - `search.py`: perform code search;
  - `configs.py`: configurations for models defined in the `models` folder. 
    Each function defines the hyper-parameters for the corresponding model.
  - `data_loader.py`: A PyTorch dataset loader.
@@ -47,7 +55,7 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    ### Code Embedding
    
    ```bash
-   python code_repr.py --model JointEmbeder
+   python repr_code.py --model JointEmbeder
    ```
    
    ### Search

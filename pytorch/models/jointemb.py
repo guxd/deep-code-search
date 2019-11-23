@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.init as weight_init
-from torch import optim
 import torch.nn.functional as F
 
 import logging
@@ -38,8 +37,6 @@ class JointEmbeder(nn.Module):
         self.w_tok = nn.Linear(config['emb_size'], config['n_hidden'])
         self.fuse3 = nn.Linear(config['n_hidden'], config['n_hidden'])
         
-        self.optimizer = optim.Adam(self.parameters(), lr=config['lr'])        
-        
         self.init_weights()
         
     def init_weights(self):# Initialize Linear Weight 
@@ -59,9 +56,7 @@ class JointEmbeder(nn.Module):
         desc_repr=self.desc_encoder(desc, desc_len)
         return desc_repr
     
-    def train_batch(self, name, name_len, apiseq, api_len, tokens, tok_len, desc_good, desc_good_len, desc_bad, desc_bad_len):
-        self.train()
-        
+    def forward(self, name, name_len, apiseq, api_len, tokens, tok_len, desc_good, desc_good_len, desc_bad, desc_bad_len):
         batch_size=name.size(0)
         code_repr=self.code_encoding(name, name_len, apiseq, api_len, tokens, tok_len)
         desc_good_repr=self.desc_encoding(desc_good, desc_good_len)
@@ -72,8 +67,4 @@ class JointEmbeder(nn.Module):
         
         loss=(self.margin-good_sim+bad_sim).clamp(min=1e-6).mean()
         
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-        
-        return loss.item()
+        return loss

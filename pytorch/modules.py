@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 import os
 import numpy as np
+import math
 
 import torch
 import torch.nn as nn
@@ -20,6 +21,12 @@ class BOWEncoder(nn.Module):
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(vocab_size, emb_size)
         
+        self.init_weights()
+        
+    def init_weights(self):
+        nn.init.uniform_(self.embedding.weight, -0.1, 0.1)
+        nn.init.constant_(self.embedding.weight[0], 0)
+        
     def forward(self, input, input_len=None): 
         batch_size, seq_len =input.size()
         embedded = self.embedding(input)  # input: [batch_sz x seq_len x 1]  embedded: [batch_sz x seq_len x emb_sz]
@@ -37,6 +44,12 @@ class SeqEncoder(nn.Module):
         
         self.embedding = nn.Embedding(vocab_size, emb_size, padding_idx=0)
         self.lstm = nn.LSTM(emb_size, hidden_size, batch_first=True, bidirectional=True)
+        
+        self.init_weights()
+        
+    def init_weights(self):
+        nn.init.uniform_(self.embedding.weight, -0.1, 0.1)
+        nn.init.constant_(self.embedding.weight[0], 0)
         for w in self.lstm.parameters(): # initialize the gate weights with orthogonal
             if w.dim()>1:
                 weight_init.orthogonal_(w)
@@ -55,7 +68,8 @@ class SeqEncoder(nn.Module):
         
         if input_lens is not None: # reorder and pad
             _, inv_indices = indices.sort()
-            hids, lens = pad_packed_sequence(hids, batch_first=True)     
+            hids, lens = pad_packed_sequence(hids, batch_first=True)   
+            hids = F.dropout(hids, p=0.25, training=self.training)
             hids = hids.index_select(0, inv_indices)
             h_n = h_n.index_select(1, inv_indices)
         h_n = h_n.view(self.n_layers, 2, batch_size, self.hidden_size) #[n_layers x n_dirs x batch_sz x hid_sz]
@@ -68,6 +82,20 @@ class SeqEncoder(nn.Module):
         return encoding #pooled_encoding
 
     
+from torch.optim.lr_scheduler import LambdaLR
+
+def get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, num_cycles=.5, last_epoch=-1):
+    """ Create a schedule with a learning rate that decreases following the
+    values of the cosine function between 0 and `pi * cycles` after a warmup
+    period during which it increases linearly between 0 and 1.
+    """
+    def lr_lambda(current_step):
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        progress = float(current_step - num_warmup_steps) / float(max(1, num_training_steps - num_warmup_steps))
+        return max(0., 0.5 * (1. + math.cos(math.pi * float(num_cycles) * 2. * progress)))
+
+    return LambdaLR(optimizer, lr_lambda, last_epoch)    
     
 
 

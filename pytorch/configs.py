@@ -38,9 +38,12 @@ def config_JointEmbeder():
             'chunk_size':100000,
             'nb_epoch': 5,
             #'optimizer': 'adam',
-            'lr':1e-3,
-            'n_eval': 100,
-        
+            'lr':1e-4,
+            'adam_epsilon':1e-8,
+            'warmup_steps':5000,
+            'fp16': True,
+            'fp16_opt_level': 'O1', #For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3'].
+                            #"See details at https://nvidia.github.io/apex/amp.html"
 
         # model_params
             'emb_size': 200,
@@ -55,7 +58,6 @@ def config_JointEmbeder():
          
     }
     return conf
-
 
 
 

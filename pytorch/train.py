@@ -18,6 +18,7 @@ import torch
 import torch.nn.functional as F
 
 import models, configs, data_loader 
+from modules import get_cosine_schedule_with_warmup
 from data_loader import *
 
 def train(args):
@@ -57,7 +58,7 @@ def train(args):
                                   config['valid_desc'], config['desc_len'])
     data_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=config['batch_size'], 
                                        shuffle=True, drop_last=True, num_workers=1)
-
+    
     ###############################################################################
     # Define the models
     ###############################################################################
@@ -66,16 +67,43 @@ def train(args):
     if args.reload_from>0:
         load_model(model, args.reload_from, device)        
     model = model.to(device)
-
+    
+    no_decay = ['bias', 'LayerNorm.weight']
+    optimizer_grouped_parameters = [
+            {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+            {'params': [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+    ]    
+    optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config['lr'], eps=config['adam_epsilon'])        
+    scheduler = get_cosine_schedule_with_warmup(
+            optimizer, num_warmup_steps=config['warmup_steps'], 
+            num_training_steps=len(data_loader)*config['nb_epoch']) # do not foget to modify the number when dataset is changed
+    if config['fp16']:
+        try:
+            from apex import amp
+        except ImportError:
+            raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
+        model, optimizer = amp.initialize(model, optimizer, opt_level=config['fp16_opt_level'])
+        
     n_iters = len(data_loader)
-    itr_global = args.reload_from+1
-    model.train() 
+    itr_global = args.reload_from+1 
     for epoch in range(int(args.reload_from/n_iters)+1, config['nb_epoch']+1): 
         losses=[]
         for batch in data_loader:
+            model.train()
             batch_gpu = [tensor.to(device) for tensor in batch]
-            loss = model.train_batch(*batch_gpu)
-            losses.append(loss)
+            loss = model(*batch_gpu)
+            
+            if config['fp16']:
+                with amp.scale_loss(loss, optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            else:
+                loss.backward()
+            optimizer.step()
+            scheduler.step()
+            model.zero_grad()
+            
+            losses.append(loss.item())
+            
             if itr_global % args.log_every ==0:
                 logger.info('epo:[%d/%d] itr:[%d/%d] Loss=%.5f'%
                             (epoch, config['nb_epoch'], itr_global%n_iters, n_iters, np.mean(losses)))

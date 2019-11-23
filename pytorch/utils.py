@@ -8,7 +8,7 @@ PAD_ID, SOS_ID, EOS_ID, UNK_ID = [0, 1, 2, 3]
 
 def cos_np(data1,data2):
     """numpy implementation of cosine similarity for matrix"""
-    dotted = np.dot(data1,np.transpose(data2))
+    dotted = np.dot(data1, np.transpose(data2))
     norm1 = np.linalg.norm(data1,axis=1)
     norm2 = np.linalg.norm(data2,axis=1)
     matrix_vector_norms = np.multiply(norm1, norm2)
@@ -20,9 +20,9 @@ def normalize(data):
     normalized_data = data/np.linalg.norm(data,axis=1).reshape((data.shape[0], 1))
     return normalized_data
 
-def dot_np(data1,data2):
+def dot_np(data1, data2):
     """cosine similarity for normalized vectors"""
-    return np.dot(data1,np.transpose(data2))
+    return np.dot(data1, np.transpose(data2))
 
 #######################################################################
 
@@ -55,15 +55,38 @@ def sent2indexes(sentence, vocab, maxlen):
         for i in range(idx_len): idxes[i] = vocab.get(tokens[i], UNK_ID)
         return idxes, idx_len
     if type(sentence) is list:
-        inds, lens = None, None
+        inds, lens = [], []
         for sent in sentence:
             idxes, idx_len = convert_sent(sent, vocab, maxlen)
-            idxes, idx_len = np.expand_dims(idxes, 0), np.array([idx_len])
-            inds = idxes if inds is None else np.concatenate((inds, idxes))
-            lens = idx_len if lens is None else np.concatenate((lens, idx_len))
-        return inds, lens
+            #idxes, idx_len = np.expand_dims(idxes, 0), np.array([idx_len])
+            inds.append(idxes)
+            lens.append(idx_len)
+        return np.vstack(inds), np.vstack(lens)
     else:
         inds, lens = sent2indexes([sentence], vocab, maxlen)
         return inds[0], lens[0]
+    
+def indexes2sent(indexes, vocab, ignore_tok=PAD_ID): 
+    '''indexes: numpy array'''
+    def revert_sent(indexes, ivocab, ignore_tok=PAD_ID):
+        indexes=filter(lambda i: i!=ignore_tok, indexes)
+        toks, length = [], 0        
+        for idx in indexes:
+            toks.append(ivocab.get(idx, '<unk>'))
+            length+=1
+            if idx == EOS_ID:
+                break
+        return ' '.join(toks), length
+    
+    ivocab = {v: k for k, v in vocab.items()}
+    if indexes.ndim==1:# one sentence
+        return revert_sent(indexes, ivocab, ignore_tok)
+    else:# dim>1
+        sentences, lens =[], [] # a batch of sentences
+        for inds in indexes:
+            sentence, length = revert_sent(inds, ivocab, ignore_tok)
+            sentences.append(sentence)
+            lens.append(length)
+        return sentences, lens
 
 ########################################################################

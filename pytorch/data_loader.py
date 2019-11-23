@@ -7,7 +7,7 @@ import json
 import random
 import numpy as np
 import pickle
-from utils import PAD_ID, SOS_ID, EOS_ID, UNK_ID 
+from utils import PAD_ID, SOS_ID, EOS_ID, UNK_ID, indexes2sent
 
     
 class CodeSearchDataset(data.Dataset):
@@ -112,32 +112,37 @@ def save_vecs(vecs, fout):
     fvec.close()
 
 if __name__ == '__main__':
-    
     input_dir='./data/github/'
-    VALID_FILE=input_dir+'train.h5'
-    valid_set=CodeSearchDataset(VALID_FILE)
-    valid_data_loader=torch.utils.data.DataLoader(dataset=valid_set,
-                                                  batch_size=1,
-                                                  shuffle=False,
-                                                  num_workers=1)
-    vocab = load_dict(input_dir+'vocab.json')
-    ivocab = {v: k for k, v in vocab.items()}
-    #print ivocab
+    train_set=CodeSearchDataset(input_dir, 'train.name.h5', 6, 'train.apiseq.h5', 20, 'train.tokens.h5', 30, 'train.desc.h5', 30)
+    train_data_loader=torch.utils.data.DataLoader(dataset=train_set, batch_size=1, shuffle=False, num_workers=1)
+    use_set=CodeSearchDataset(input_dir, 'use.name.h5', 6, 'use.apiseq.h5', 20, 'use.tokens.h5', 30)
+    use_data_loader=torch.utils.data.DataLoader(dataset=use_set, batch_size=1, shuffle=False, num_workers=1)
+    vocab_api = load_dict(input_dir+'vocab.apiseq.json')
+    vocab_name = load_dict(input_dir+'vocab.name.json')
+    vocab_tokens = load_dict(input_dir+'vocab.tokens.json')
+    vocab_desc = load_dict(input_dir+'vocab.desc.json')
+    
+    print('============ Train Data ================')
     k=0
-    for qapair in valid_data_loader:
+    for batch in train_data_loader:
+        batch = tuple([t.numpy() for t in batch])
+        name, name_len, apiseq, api_len, tokens, tok_len, good_desc, good_desc_len, bad_desc, bad_desc_len = batch
         k+=1
-        if k>20:
-            break
-        decoded_words=[]
-        idx=qapair[0].numpy().tolist()[0]
-        print (idx)
-        for i in idx:
-            decoded_words.append(ivocab[i])
-        question = ' '.join(decoded_words)
-        decoded_words=[]
-        idx=qapair[1].numpy().tolist()[0]
-        for i in idx:
-            decoded_words.append(ivocab[i])
-        answer=' '.join(decoded_words)
-        print('<', question)
-        print('>', answer)
+        if k>20: break
+        print('-------------------------------')
+        print(indexes2sent(name, vocab_name))
+        print(indexes2sent(apiseq, vocab_api))
+        print(indexes2sent(tokens, vocab_tokens))
+        print(indexes2sent(good_desc, vocab_desc))
+        
+    print('\n\n============ Use Data ================')
+    k=0
+    for batch in use_data_loader:
+        batch = tuple([t.numpy() for t in batch])
+        name, name_len, apiseq, api_len, tokens, tok_len = batch
+        k+=1
+        if k>20: break
+        print('-------------------------------')
+        print(indexes2sent(name, vocab_name))
+        print(indexes2sent(apiseq, vocab_api))
+        print(indexes2sent(tokens, vocab_tokens))
