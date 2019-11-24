@@ -41,7 +41,7 @@ def config_JointEmbeder():
             'lr':1e-4,
             'adam_epsilon':1e-8,
             'warmup_steps':5000,
-            'fp16': True,
+            'fp16': False,
             'fp16_opt_level': 'O1', #For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3'].
                             #"See details at https://nvidia.github.io/apex/amp.html"
 
@@ -53,11 +53,10 @@ def config_JointEmbeder():
             'init_embed_weights_name': None,#'word2vec_100_methname.h5', 
             'init_embed_weights_tokens': None,#'word2vec_100_tokens.h5', 
             'init_embed_weights_desc': None,#'word2vec_100_desc.h5',           
-            'margin': 0.05,
+            'margin': 0.5,
             'sim_measure':'cos',#similarity measure: gesd, cosine, aesd
          
     }
     return conf
-
 
 

@@ -1,6 +1,7 @@
 import os
 import sys
 import random
+import time
 from datetime import datetime
 import numpy as np
 import math
@@ -15,10 +16,10 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 from tensorboardX import SummaryWriter # install tensorboardX (pip install tensorboardX) before importing this package
 
 import torch
-import torch.nn.functional as F
 
 import models, configs, data_loader 
 from modules import get_cosine_schedule_with_warmup
+from utils import normalize, dot_np
 from data_loader import *
 
 def train(args):
@@ -87,6 +88,7 @@ def train(args):
     n_iters = len(data_loader)
     itr_global = args.reload_from+1 
     for epoch in range(int(args.reload_from/n_iters)+1, config['nb_epoch']+1): 
+        itr_start_time = time.time()
         losses=[]
         for batch in data_loader:
             model.train()
@@ -96,8 +98,11 @@ def train(args):
             if config['fp16']:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
+                torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), 5.0)
             else:
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+                
             optimizer.step()
             scheduler.step()
             model.zero_grad()
@@ -105,16 +110,18 @@ def train(args):
             losses.append(loss.item())
             
             if itr_global % args.log_every ==0:
-                logger.info('epo:[%d/%d] itr:[%d/%d] Loss=%.5f'%
-                            (epoch, config['nb_epoch'], itr_global%n_iters, n_iters, np.mean(losses)))
+                elapsed = time.time() - itr_start_time
+                logger.info('epo:[%d/%d] itr:[%d/%d] step_time:%ds Loss=%.5f'%
+                        (epoch, config['nb_epoch'], itr_global%n_iters, n_iters, elapsed, np.mean(losses)))
                 if tb_writer is not None:
                     tb_writer.add_scalar('loss', np.mean(losses), itr_global)
                 losses=[] 
+                itr_start_time = time.time() 
             itr_global = itr_global + 1
 
             if itr_global % args.valid_every == 0:
                 logger.info("validating..")                  
-                acc1, mrr, map1, ndcg = validate(valid_set, model,10000, 1)  
+                acc1, mrr, map1, ndcg = validate(valid_set, model, 10000, 1)  
                 logger.info(f'ACC={acc1}, MRR={mrr}, MAP={map1}, nDCG={ndcg}')
                 if tb_writer is not None:
                     tb_writer.add_scalar('acc', acc1, itr_global)
@@ -126,7 +133,7 @@ def train(args):
                 save_model(model, itr_global)
 
 ##### Evaluation #####
-def validate(valid_set, model, poolsize, K):
+def validate(valid_set, model, pool_size, K):
     """
     simple validation in a code pool. 
     @param: poolsize - size of the code pool, if -1, load the whole test set
@@ -170,26 +177,38 @@ def validate(valid_set, model, poolsize, K):
     model.eval()
     device = next(model.parameters()).device
 
-    data_loader = torch.utils.data.DataLoader(dataset=valid_set, batch_size=poolsize, 
+    data_loader = torch.utils.data.DataLoader(dataset=valid_set, batch_size=10000, 
                                  shuffle=True, drop_last=True, num_workers=1)
-
     accs, mrrs, maps, ndcgs=[],[],[],[]
-    for batch in tqdm(data_loader):
-        # names, name_len, apis, api_len, toks, tok_len, descs, desc_len, bad_descs, bad_desc_len
-        code_batch = [tensor.to(device) for tensor in batch[:6]]
-        desc_batch = [tensor.to(device) for tensor in batch[6:8]]
+    code_reprs, desc_reprs = [], []
+    n_processed = 0
+    for batch in tqdm(data_loader):        
+        if len(batch) == 10: # names, name_len, apis, api_len, toks, tok_len, descs, desc_len, bad_descs, bad_desc_len
+            code_batch = [tensor.to(device) for tensor in batch[:6]]
+            desc_batch = [tensor.to(device) for tensor in batch[6:8]]
+        else: # code_ids, type_ids, code_mask, good_ids, good_mask, bad_ids, bad_mask
+            code_batch = [tensor.to(device) for tensor in batch[:3]]
+            desc_batch = [tensor.to(device) for tensor in batch[3:5]]
         with torch.no_grad():
-            code_repr=model.code_encoding(*code_batch)
-            desc_repr=model.desc_encoding(*desc_batch) # [poolsize x hid_size]
-        for i in range(poolsize):
-            desc_repr_rep=desc_repr[i].view(1, -1).expand(poolsize,-1)
+            code_repr=model.code_encoding(*code_batch).data.cpu().numpy()
+            desc_repr=model.desc_encoding(*desc_batch).data.cpu().numpy() # [poolsize x hid_size]
+        code_reprs.append(normalize(code_repr))
+        desc_reprs.append(normalize(desc_repr))
+        n_processed += batch[0].size(0)
+    code_reprs, desc_reprs = np.vstack(code_reprs), np.vstack(desc_reprs)
+     
+    for k in tqdm(range(0, n_processed, pool_size)):
+        code_pool, desc_pool = code_reprs[k:k+pool_size], desc_reprs[k:k+pool_size] 
+        for i in range(min(10000, pool_size)): # for i in range(pool_size):
+            desc_vec = np.expand_dims(desc_pool[i], axis=1) # [dim x 1]
             n_results = K          
-            sims = F.cosine_similarity(code_repr, desc_repr_rep).data.cpu().numpy()
+            sims = np.dot(code_pool, desc_vec) # [pool_size x 1]
+            sims = np.squeeze(dims, axis=1)
             negsims=np.negative(sims)
-            predict=np.argsort(negsims)#predict = np.argpartition(negsims, kth=n_results-1)
+            predict = np.argpartition(negsims, kth=n_results-1)#predict=np.argsort(negsims)#
             predict = predict[:n_results]   
             predict = [int(k) for k in predict]
-            real=[i]
+            real = [i]
             accs.append(ACC(real,predict))
             mrrs.append(MRR(real,predict))
             maps.append(MAP(real,predict))
@@ -225,7 +244,6 @@ if __name__ == '__main__':
     
     torch.backends.cudnn.benchmark = True # speed up training by using cudnn
     torch.backends.cudnn.deterministic = True # fix the random seed in cudnn
-    os.environ['CUDA_LAUNCH_BLOCKING'] = '1' # to get exact stack trace for the exception "device-side-assert-triggered"
    
     train(args)
         

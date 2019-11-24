@@ -1,5 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
 import os
 import numpy as np
 import math
@@ -13,14 +11,20 @@ import torch.nn.functional as F
 
 import logging
 logger = logging.getLogger(__name__)
-   
+
+
 class BOWEncoder(nn.Module):
+    '''
+    https://medium.com/data-from-the-trenches/how-deep-does-your-sentence-embedding-model-need-to-be-cdffa191cb53
+    https://www.kdnuggets.com/2019/10/beyond-word-embedding-document-embedding.html
+    https://towardsdatascience.com/document-embedding-techniques-fed3e7a6a25d#bbe8
+    '''
     def __init__(self, vocab_size, emb_size, hidden_size):
         super(BOWEncoder, self).__init__()
         self.emb_size=emb_size
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(vocab_size, emb_size)
-        
+        #self.word_weights = get_word_weights(vocab_size) 
         self.init_weights()
         
     def init_weights(self):
@@ -31,6 +35,13 @@ class BOWEncoder(nn.Module):
         batch_size, seq_len =input.size()
         embedded = self.embedding(input)  # input: [batch_sz x seq_len x 1]  embedded: [batch_sz x seq_len x emb_sz]
         embedded= F.dropout(embedded, 0.25, self.training) # [batch_size x seq_len x emb_size]
+        
+        # try to use a weighting scheme to summarize bag of word embeddings: 
+        # for example, a smooth inverse frequency weighting algorithm: https://github.com/peter3125/sentence2vec/blob/master/sentence2vec.py
+        # word_weights = self.word_weights(input) # [batch_size x seq_len x 1]
+        # embeded = word_weights*embedded 
+        
+        # max pooling word vectors
         output_pool = F.max_pool1d(embedded.transpose(1,2), seq_len).squeeze(2) # [batch_size x emb_size]
         encoding = torch.tanh(output_pool)        
         return encoding
@@ -98,7 +109,14 @@ def get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_training_st
     return LambdaLR(optimizer, lr_lambda, last_epoch)    
     
 
-
+def get_word_weights(vocab_size, padding_idx=0):
+    '''contruct a word weighting table '''
+    def cal_weight(word_idx):
+        return 1-math.exp(-word_idx)
+    weight_table = np.array([cal_weight(w) for w in range(vocab_size)])
+    if padding_idx is not None:        
+        weight_table[padding_idx] = 0. # zero vector for padding dimension
+    return torch.FloatTensor(weight_table)
 
  
  

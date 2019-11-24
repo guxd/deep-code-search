@@ -12,7 +12,7 @@ from tensorboardX import SummaryWriter # install tensorboardX (pip install tenso
 
 import torch
 
-from utils import cos_np, normalize, dot_np, sent2indexes
+from utils import normalize, sent2indexes
 from data_loader import load_dict, load_vecs
 import models, configs
   
@@ -59,7 +59,7 @@ def search(config, model, vocab, query, n_results=10):
     desc_len = torch.from_numpy(desc_len).clamp(max=config['desc_len']).to(device)
     with torch.no_grad():
         desc_repr = model.desc_encoding(desc, desc_len).data.cpu().numpy()
-        desc_repr = normalize(desc_repr)
+        desc_repr = normalize(desc_repr).T # [dim x 1]
     results =[]
     threads = []
     for i, codevecs_chunk in enumerate(codevecs):
@@ -73,8 +73,8 @@ def search(config, model, vocab, query, n_results=10):
 
 def search_thread(results, desc_repr, codevecs, i, n_results):        
 #1. compute code similarities
-    chunk_sims = dot_np(desc_repr,codevecs) 
-    chunk_sims = chunk_sims[0] # squeeze batch dim
+    chunk_sims = np.dot(codevecs, desc_repr) # [pool_size x 1]
+    chunk_sims = np.squeeze(chunk_sims, axis=1) # squeeze dim
 
 #2. select the top K results
     negsims = np.negative(chunk_sims)

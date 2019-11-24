@@ -8,7 +8,8 @@ PAD_ID, SOS_ID, EOS_ID, UNK_ID = [0, 1, 2, 3]
 
 def cos_np(data1,data2):
     """numpy implementation of cosine similarity for matrix"""
-    dotted = np.dot(data1, np.transpose(data2))
+    print("warning: the second matrix will be transposed, so try to put the simpler matrix as the second argument in order to save time.")
+    dotted = np.dot(data1,np.transpose(data2))
     norm1 = np.linalg.norm(data1,axis=1)
     norm2 = np.linalg.norm(data2,axis=1)
     matrix_vector_norms = np.multiply(norm1, norm2)
@@ -20,8 +21,9 @@ def normalize(data):
     normalized_data = data/np.linalg.norm(data,axis=1).reshape((data.shape[0], 1))
     return normalized_data
 
-def dot_np(data1, data2):
+def dot_np(data1,data2):
     """cosine similarity for normalized vectors"""
+    print("warning: the second matrix will be transposed, so try to put the simpler matrix as the second argument in order to save time.")
     return np.dot(data1, np.transpose(data2))
 
 #######################################################################

@@ -56,15 +56,15 @@ class JointEmbeder(nn.Module):
         desc_repr=self.desc_encoder(desc, desc_len)
         return desc_repr
     
-    def forward(self, name, name_len, apiseq, api_len, tokens, tok_len, desc_good, desc_good_len, desc_bad, desc_bad_len):
+    def forward(self, name, name_len, apiseq, api_len, tokens, tok_len, desc_anchor, desc_anchor_len, desc_neg, desc_neg_len):
         batch_size=name.size(0)
         code_repr=self.code_encoding(name, name_len, apiseq, api_len, tokens, tok_len)
-        desc_good_repr=self.desc_encoding(desc_good, desc_good_len)
-        desc_bad_repr=self.desc_encoding(desc_bad, desc_bad_len)
+        desc_anchor_repr=self.desc_encoding(desc_anchor, desc_anchor_len)
+        desc_neg_repr=self.desc_encoding(desc_neg, desc_neg_len)
     
-        good_sim=F.cosine_similarity(code_repr, desc_good_repr)
-        bad_sim=F.cosine_similarity(code_repr, desc_bad_repr) # [batch_sz x 1]
+        anchor_sim=F.cosine_similarity(code_repr, desc_anchor_repr)
+        neg_sim=F.cosine_similarity(code_repr, desc_neg_repr) # [batch_sz x 1]
         
-        loss=(self.margin-good_sim+bad_sim).clamp(min=1e-6).mean()
+        loss=(self.margin-anchor_sim+neg_sim).clamp(min=1e-6).mean()
         
         return loss
