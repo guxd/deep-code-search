@@ -63,7 +63,8 @@ def train(args):
         model.load_state_dict(torch.load(f'./output/{args.model}/{args.dataset}/models/epo{epoch}.h5', map_location=to_device))
 
     config=getattr(configs, 'config_'+args.model)()
-    config.update(vars(args))
+    if args.automl:
+        config.update(vars(args))
     print(config)
     
     ###############################################################################
@@ -262,7 +263,7 @@ def parse_args():
    
     parser.add_argument('-g', '--gpu_id', type=int, default=0, help='GPU ID')
     parser.add_argument('-v', "--visual",action="store_true", default=False, help="Visualize training status in tensorboard")
-    
+    parser.add_argument('--automl', action='store_true', default=False, help='use automl')
     # Training Arguments
     parser.add_argument('--log_every', type=int, default=100, help='interval to log autoencoder training results')
     parser.add_argument('--valid_every', type=int, default=5000, help='interval to validation')
@@ -279,11 +280,11 @@ def parse_args():
                              "See details at https://nvidia.github.io/apex/amp.html")
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
 
-     # Model Hyperparameters
-    parser.add_argument('--emb_size', type=int, default= 512, help = 'embedding dim')
-    parser.add_argument('--n_hidden', type=int, default= 1024, help='number of hidden dimension of code/desc representation')
-    parser.add_argument('--lstm_dims', type=int, default= 512)         
-    parser.add_argument('--margin', type=float, default= 0.5)
+     # Model Hyperparameters for automl tuning
+    parser.add_argument('--emb_size', type=int, default=-1 help = 'embedding dim')
+    parser.add_argument('--n_hidden', type=int, default= -1, help='number of hidden dimension of code/desc representation')
+    parser.add_argument('--lstm_dims', type=int, default= -1)         
+    parser.add_argument('--margin', type=float, default= -1)
     
     return parser.parse_args()
 

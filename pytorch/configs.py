@@ -38,21 +38,19 @@ def config_JointEmbeder():
             'chunk_size':200000,
             'nb_epoch': 10,
             #'optimizer': 'adam',
-          #  'learning_rate':1e-4,
-          #  'adam_epsilon':1e-8,
-          #  'warmup_steps':5000,
+            'learning_rate':1e-4,
+            'adam_epsilon':1e-8,
+            'warmup_steps':5000,
 
         # model_params
-            #'emb_size': 512,
-            #'n_hidden': 1024,#number of hidden dimension of code/desc representation
+            'emb_size': 512,
+            'n_hidden': 1024,#number of hidden dimension of code/desc representation
             # recurrent
-            #'lstm_dims': 512, # * 2          
-            #'margin': 0.5,
+            'lstm_dims': 512, # * 2          
+            'margin': 0.5,
             #'sim_measure':'cos',#similarity measure: gesd, cosine, aesd
          
     }
     return conf
-
-
 
 
