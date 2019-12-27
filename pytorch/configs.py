@@ -35,28 +35,24 @@ def config_JointEmbeder():
                     
         #training_params            
             'batch_size': 64,
-            'chunk_size':100000,
-            'nb_epoch': 5,
+            'chunk_size':200000,
+            'nb_epoch': 10,
             #'optimizer': 'adam',
-            'lr':1e-4,
-            'adam_epsilon':1e-8,
-            'warmup_steps':5000,
-            'fp16': False,
-            'fp16_opt_level': 'O1', #For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3'].
-                            #"See details at https://nvidia.github.io/apex/amp.html"
+          #  'learning_rate':1e-4,
+          #  'adam_epsilon':1e-8,
+          #  'warmup_steps':5000,
 
         # model_params
-            'emb_size': 200,
-            'n_hidden': 1000,#number of hidden dimension of code/desc representation
+            #'emb_size': 512,
+            #'n_hidden': 1024,#number of hidden dimension of code/desc representation
             # recurrent
-            'lstm_dims': 500, # * 2
-            'init_embed_weights_name': None,#'word2vec_100_methname.h5', 
-            'init_embed_weights_tokens': None,#'word2vec_100_tokens.h5', 
-            'init_embed_weights_desc': None,#'word2vec_100_desc.h5',           
-            'margin': 0.5,
-            'sim_measure':'cos',#similarity measure: gesd, cosine, aesd
+            #'lstm_dims': 512, # * 2          
+            #'margin': 0.5,
+            #'sim_measure':'cos',#similarity measure: gesd, cosine, aesd
          
     }
     return conf
+
+
 
 

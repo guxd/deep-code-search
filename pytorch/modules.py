@@ -43,7 +43,7 @@ class BOWEncoder(nn.Module):
         
         # max pooling word vectors
         output_pool = F.max_pool1d(embedded.transpose(1,2), seq_len).squeeze(2) # [batch_size x emb_size]
-        encoding = torch.tanh(output_pool)        
+        encoding = output_pool #torch.tanh(output_pool)        
         return encoding
         
 class SeqEncoder(nn.Module):
@@ -52,18 +52,22 @@ class SeqEncoder(nn.Module):
         self.emb_size = emb_size
         self.hidden_size = hidden_size
         self.n_layers = n_layers
-        
         self.embedding = nn.Embedding(vocab_size, emb_size, padding_idx=0)
         self.lstm = nn.LSTM(emb_size, hidden_size, batch_first=True, bidirectional=True)
-        
         self.init_weights()
         
     def init_weights(self):
         nn.init.uniform_(self.embedding.weight, -0.1, 0.1)
         nn.init.constant_(self.embedding.weight[0], 0)
-        for w in self.lstm.parameters(): # initialize the gate weights with orthogonal
-            if w.dim()>1:
-                weight_init.orthogonal_(w)
+        for name, param in self.lstm.named_parameters(): # initialize the gate weights 
+            # adopted from https://gist.github.com/jeasinema/ed9236ce743c8efaf30fa2ff732749f5
+            #if len(param.shape)>1:
+            #    weight_init.orthogonal_(param.data) 
+            #else:
+            #    weight_init.normal_(param.data)                
+            # adopted from fairseq
+            if 'weight' in name or 'bias' in name: 
+                param.data.uniform_(-0.1, 0.1)
 
     def forward(self, inputs, input_lens=None): 
         batch_size, seq_len=inputs.size()
@@ -88,7 +92,7 @@ class SeqEncoder(nn.Module):
         encoding = h_n.transpose(1,0).contiguous().view(batch_size,-1) #[batch_sz x (n_dirs*hid_sz)]
         
         #pooled_encoding = F.max_pool1d(hids.transpose(1,2), seq_len).squeeze(2) # [batch_size x hid_size*2]
-        #pooled_encoding = torch.tanh(pooled_encoding)
+        #encoding = torch.tanh(pooled_encoding)
 
         return encoding #pooled_encoding
 

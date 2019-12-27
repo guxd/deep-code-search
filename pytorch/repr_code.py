@@ -41,7 +41,8 @@ def repr_code(args):
         batch_gpu = [tensor.to(device) for tensor in batch]
         with torch.no_grad():
             reprs = model.code_encoding(*batch_gpu).data.cpu().numpy()
-            reprs = normalize(reprs)
+        reprs = reprs.astype(np.float32)
+        reprs = normalize(reprs)
         vecs.append(reprs)
         n_processed=n_processed+ batch[0].size(0)
         if n_processed>= args.chunk_size:

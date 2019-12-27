@@ -5,3 +5,4 @@ numpy
 scipy
 tqdm
 tensorboardX
+transformers

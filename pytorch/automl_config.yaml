@@ -1,0 +1,35 @@
+backend:
+    type: NSMLBackend
+    setting:
+        entry: train.py
+        dataset: [codesearch]
+        cpus: 2
+        gpus: 6
+        gpu-model: P40
+        args: ""
+tune:
+    objective:
+        measure: acc
+        strategy: maximize
+    sampler:
+        name: RandomSampler
+        setting:
+    planner:
+        name: DefaultPlanner
+        setting:
+            num_config: 1000
+            max_worker: 6
+hyperparams:
+    learning_rate:
+        type: range
+        min: 0.00005
+        max: 0.01
+    margin:
+        type: values
+        values: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    n_hidden:
+        type: values
+        values: [512, 1024]
+    lstm_dims:
+        type: values
+        values: [256, 512, 768, 1024]

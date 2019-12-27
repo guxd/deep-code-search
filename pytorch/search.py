@@ -45,7 +45,7 @@ def load_codevecs(vec_path, chunk_size=2000000):
     chunk_id = 0
     chunk_path = f"{vec_path[:-3]}_part{chunk_id}.h5"
     while os.path.exists(chunk_path):
-        reprs=load_vecs(chunk_path)
+        reprs = load_vecs(chunk_path)
         codevecs.append(reprs)
         chunk_id+=1
         chunk_path = f"{vec_path[:-3]}_part{chunk_id}.h5"
@@ -59,7 +59,7 @@ def search(config, model, vocab, query, n_results=10):
     desc_len = torch.from_numpy(desc_len).clamp(max=config['desc_len']).to(device)
     with torch.no_grad():
         desc_repr = model.desc_encoding(desc, desc_len).data.cpu().numpy()
-        desc_repr = normalize(desc_repr).T # [dim x 1]
+    desc_repr = normalize(desc_repr).astype(np.float32).T # [dim x 1]
     results =[]
     threads = []
     for i, codevecs_chunk in enumerate(codevecs):
@@ -84,6 +84,23 @@ def search_thread(results, desc_repr, codevecs, i, n_results):
     chunk_sims = chunk_sims[maxinds]
     results.extend(zip(chunk_codes, chunk_sims))
     
+def postproc(codes_sims):
+    codes_, sims_ = zip(*codes_sims)
+    codes = [code for code in codes_]
+    sims = [sim for sim in sims_]
+    final_codes = []
+    final_sims = []
+    n = len(codes_sims)        
+    for i in range(n):
+        is_dup=False
+        for j in range(i):
+            if codes[i][:80]==codes[j][:80] and abs(sims[i]-sims[j])<0.01:
+                is_dup=True
+        if not is_dup:
+            final_codes.append(codes[i])
+            final_sims.append(sims[i])
+    return zip(final_codes,final_sims)
+    
 def parse_args():
     parser = argparse.ArgumentParser("Train and Test Code Search(Embedding) Model")
     parser.add_argument('--data_path', type=str, default='./data/', help='location of the data corpus')
@@ -100,7 +117,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     device = torch.device(f"cuda:{args.gpu_id}" if torch.cuda.is_available() else "cpu")
-    config=getattr(configs, 'config_'+args.model)()
+    config = getattr(configs, 'config_'+args.model)()
     
     ##### Define model ######
     logger.info('Constructing Model..')
@@ -110,7 +127,7 @@ if __name__ == '__main__':
     
     data_path = args.data_path+args.dataset+'/'
     
-    vocab_desc=load_dict(data_path+config['vocab_desc'])
+    vocab_desc = load_dict(data_path+config['vocab_desc'])
     codebase = load_codebase(data_path+config['use_codebase'], args.chunk_size)
     codevecs = load_codevecs(data_path+config['use_codevecs'], args.chunk_size)
     assert len(codebase)==len(codevecs), \
@@ -126,5 +143,9 @@ if __name__ == '__main__':
             break
         query = query.lower().replace('how to ', '').replace('how do i ', '').replace('how can i ', '').replace('?', '').strip()
         results = search(config, model, vocab_desc, query, n_results)
+        results = sorted(results, reverse=True, key=lambda x:x[1])
+        results = postproc(results)
+        results = list(results)[:n_results]
         results = '\n\n'.join(map(str,results)) #combine the result into a returning string
         print(results)
+

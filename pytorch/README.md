@@ -1,24 +1,17 @@
 # Deep Code Search
 
-Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepcs.pdf).
+PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepcs.pdf).
 
 ## Dependency
 > Tested in MacOS 10.12, Ubuntu 16.04
 * Python 3.6
 * PyTorch 
 * tqdm
-* amp
 
  ```
  pip install -r requirements.txt
  ```
  
- [optional] Install apex for fp16 training:
- ```
- $ git clone https://github.com/NVIDIA/apex
- $ cd apex
- $ pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
- ```
 
 ## Code Structures
 
@@ -30,8 +23,13 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
  - `configs.py`: configurations for models defined in the `models` folder. 
    Each function defines the hyper-parameters for the corresponding model.
  - `data_loader.py`: A PyTorch dataset loader.
- - `utils.py`: Utilities for models and training. 
+ - `utils.py`: utilities for models and training. 
 
+## Pretrained Model
+   If you want a quick test, [here]() is a pretrained model. Put it in `./output/JointEmbeder/github/models/` and run:
+   ```
+   python search.py --reload_from 
+   ```
  
 ## Usage
 
@@ -55,15 +53,15 @@ Pytorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    ### Code Embedding
    
    ```bash
-   python repr_code.py --model JointEmbeder
+   python repr_code.py --model JointEmbeder --reload_from XXX
    ```
    
    ### Search
    
    ```bash
-   python search.py --model JointEmbeder 
+   python search.py --model JointEmbeder --_reload_from XXX
    ```
-
+   
 
 ## Citation
 

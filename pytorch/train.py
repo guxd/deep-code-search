@@ -6,7 +6,6 @@ from datetime import datetime
 import numpy as np
 import math
 import argparse
-from datashape.coretypes import real
 random.seed(42)
 from tqdm import tqdm
 
@@ -22,6 +21,27 @@ from modules import get_cosine_schedule_with_warmup
 from utils import normalize, dot_np
 from data_loader import *
 
+try: 
+    import nsml
+    from nsml import DATASET_PATH, IS_ON_NSML, SESSION_NAME
+except: 
+    IS_ON_NSML = False
+    
+def bind_nsml(model, **kwargs):
+    if type(model) == torch.nn.DataParallel: model = model.module
+    def infer(raw_data, **kwargs):
+        pass
+    def load(path, *args):
+        weights = torch.load(path)
+        model.load_state_dict(weights)
+        logger.info(f'Load checkpoints...!{path}')
+    def save(path, *args):
+        torch.save(model.state_dict(), os.path.join(path, 'model.pkl'))
+        logger.info(f'Save checkpoints...!{path}')
+    # function in function is just used to divide the namespace.
+    nsml.bind(save, load, infer)
+
+    
 def train(args):
     fh = logging.FileHandler(f"./output/{args.model}/{args.dataset}/logs.txt")
                                       # create file handler which logs even debug messages
@@ -43,11 +63,13 @@ def train(args):
         model.load_state_dict(torch.load(f'./output/{args.model}/{args.dataset}/models/epo{epoch}.h5', map_location=to_device))
 
     config=getattr(configs, 'config_'+args.model)()
+    config.update(vars(args))
+    print(config)
     
     ###############################################################################
     # Load data
     ###############################################################################
-    data_path = args.data_path+args.dataset+'/'
+    data_path = DATASET_PATH+"/train/" if IS_ON_NSML else args.data_path+args.dataset+'/'
     train_set = eval(config['dataset_name'])(data_path, config['train_name'], config['name_len'],
                                   config['train_api'], config['api_len'],
                                   config['train_tokens'], config['tokens_len'],
@@ -66,15 +88,18 @@ def train(args):
     logger.info('Constructing Model..')
     model = getattr(models, args.model)(config)#initialize the model
     if args.reload_from>0:
-        load_model(model, args.reload_from, device)        
-    model = model.to(device)
-    
+        load_model(model, args.reload_from, device)    
+    logger.info('done')
+    if IS_ON_NSML:
+        bind_nsml(model)
+    model.to(device)
+
     no_decay = ['bias', 'LayerNorm.weight']
     optimizer_grouped_parameters = [
             {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
             {'params': [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]    
-    optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config['lr'], eps=config['adam_epsilon'])        
+    optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config['learning_rate'], eps=config['adam_epsilon'])        
     scheduler = get_cosine_schedule_with_warmup(
             optimizer, num_warmup_steps=config['warmup_steps'], 
             num_training_steps=len(data_loader)*config['nb_epoch']) # do not foget to modify the number when dataset is changed
@@ -91,6 +116,7 @@ def train(args):
         itr_start_time = time.time()
         losses=[]
         for batch in data_loader:
+            
             model.train()
             batch_gpu = [tensor.to(device) for tensor in batch]
             loss = model(*batch_gpu)
@@ -115,6 +141,11 @@ def train(args):
                         (epoch, config['nb_epoch'], itr_global%n_iters, n_iters, elapsed, np.mean(losses)))
                 if tb_writer is not None:
                     tb_writer.add_scalar('loss', np.mean(losses), itr_global)
+                if IS_ON_NSML:
+                    summary = {"summary": True, "scope": locals(), "step": itr_global}
+                    summary.update({'loss':np.mean(losses)})
+                    nsml.report(**summary)
+                    
                 losses=[] 
                 itr_start_time = time.time() 
             itr_global = itr_global + 1
@@ -128,9 +159,14 @@ def train(args):
                     tb_writer.add_scalar('mrr', mrr, itr_global)
                     tb_writer.add_scalar('map', map1, itr_global)
                     tb_writer.add_scalar('ndcg', ndcg, itr_global)
-
+                if IS_ON_NSML:
+                    summary = {"summary": True, "scope": locals(), "step": itr_global}
+                    summary.update({'acc':acc1,'mrr':mrr, 'map':map1, 'ndcg':ndcg})
+                    nsml.report(**summary)
             if itr_global % args.save_every == 0:
                 save_model(model, itr_global)
+                if IS_ON_NSML:
+                    nsml.save(itr_global)
 
 ##### Evaluation #####
 def validate(valid_set, model, pool_size, K):
@@ -192,8 +228,8 @@ def validate(valid_set, model, pool_size, K):
         with torch.no_grad():
             code_repr=model.code_encoding(*code_batch).data.cpu().numpy()
             desc_repr=model.desc_encoding(*desc_batch).data.cpu().numpy() # [poolsize x hid_size]
-        code_reprs.append(normalize(code_repr))
-        desc_reprs.append(normalize(desc_repr))
+        code_reprs.append(normalize(code_repr).astype(np.float32))
+        desc_reprs.append(normalize(desc_repr).astype(np.float32))
         n_processed += batch[0].size(0)
     code_reprs, desc_reprs = np.vstack(code_reprs), np.vstack(desc_reprs)
      
@@ -203,7 +239,7 @@ def validate(valid_set, model, pool_size, K):
             desc_vec = np.expand_dims(desc_pool[i], axis=1) # [dim x 1]
             n_results = K          
             sims = np.dot(code_pool, desc_vec) # [pool_size x 1]
-            sims = np.squeeze(dims, axis=1)
+            sims = np.squeeze(sims, axis=1)
             negsims=np.negative(sims)
             predict = np.argpartition(negsims, kth=n_results-1)#predict=np.argsort(negsims)#
             predict = predict[:n_results]   
@@ -227,11 +263,27 @@ def parse_args():
     parser.add_argument('-g', '--gpu_id', type=int, default=0, help='GPU ID')
     parser.add_argument('-v', "--visual",action="store_true", default=False, help="Visualize training status in tensorboard")
     
-    # Evaluation Arguments
+    # Training Arguments
     parser.add_argument('--log_every', type=int, default=100, help='interval to log autoencoder training results')
     parser.add_argument('--valid_every', type=int, default=5000, help='interval to validation')
     parser.add_argument('--save_every', type=int, default=10000, help='interval to evaluation to concrete results')
     parser.add_argument('--seed', type=int, default=1111, help='random seed')
+        
+    parser.add_argument('--learning_rate', type=float, default=1e-4, help='learning rate')
+    parser.add_argument('--adam_epsilon', type=float, default=1e-8)
+    parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight deay if we apply some.")
+    parser.add_argument('--warmup_steps', type=int, default=5000)
+    parser.add_argument('--fp16', action='store_true', help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit")
+    parser.add_argument('--fp16_opt_level', type=str, default='O1',
+                        help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
+                             "See details at https://nvidia.github.io/apex/amp.html")
+    parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
+
+     # Model Hyperparameters
+    parser.add_argument('--emb_size', type=int, default= 512, help = 'embedding dim')
+    parser.add_argument('--n_hidden', type=int, default= 1024, help='number of hidden dimension of code/desc representation')
+    parser.add_argument('--lstm_dims', type=int, default= 512)         
+    parser.add_argument('--margin', type=float, default= 0.5)
     
     return parser.parse_args()
 

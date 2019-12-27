@@ -20,7 +20,7 @@ class JointEmbeder(nn.Module):
         super(JointEmbeder, self).__init__()
         self.conf = config
         self.margin = config['margin']
-                
+               
         self.name_encoder=SeqEncoder(config['n_words'],config['emb_size'],config['lstm_dims'])
         self.api_encoder=SeqEncoder(config['n_words'],config['emb_size'],config['lstm_dims'])
         self.tok_encoder=BOWEncoder(config['n_words'],config['emb_size'],config['n_hidden'])
@@ -35,13 +35,14 @@ class JointEmbeder(nn.Module):
         self.w_name = nn.Linear(2*config['lstm_dims'], config['n_hidden'])
         self.w_api = nn.Linear(2*config['lstm_dims'], config['n_hidden'])
         self.w_tok = nn.Linear(config['emb_size'], config['n_hidden'])
+        self.w_desc = nn.Linear(2*config['lstm_dims'], config['n_hidden'])
         self.fuse3 = nn.Linear(config['n_hidden'], config['n_hidden'])
         
         self.init_weights()
         
     def init_weights(self):# Initialize Linear Weight 
         for m in [self.w_name, self.w_api, self.w_tok, self.fuse3]:        
-            m.weight.data.uniform_(-0.05, 0.05)#nn.init.xavier_normal_(m.weight)
+            m.weight.data.uniform_(-0.1, 0.1)#nn.init.xavier_normal_(m.weight)
             nn.init.constant_(m.bias, 0.) 
             
     def code_encoding(self, name, name_len, api, api_len, tokens, tok_len):
@@ -54,6 +55,7 @@ class JointEmbeder(nn.Module):
         
     def desc_encoding(self, desc, desc_len):
         desc_repr=self.desc_encoder(desc, desc_len)
+        desc_repr=self.w_desc(desc_repr)
         return desc_repr
     
     def forward(self, name, name_len, apiseq, api_len, tokens, tok_len, desc_anchor, desc_anchor_len, desc_neg, desc_neg_len):
