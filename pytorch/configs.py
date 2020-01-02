@@ -38,16 +38,19 @@ def config_JointEmbeder():
             'chunk_size':200000,
             'nb_epoch': 10,
             #'optimizer': 'adam',
-            'learning_rate':1e-4,
+            'learning_rate':1e-3,
             'adam_epsilon':1e-8,
             'warmup_steps':5000,
+            'fp16': False,
+            'fp16_opt_level': 'O1', #For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3'].
+                            #"See details at https://nvidia.github.io/apex/amp.html"
 
         # model_params
             'emb_size': 512,
             'n_hidden': 1024,#number of hidden dimension of code/desc representation
             # recurrent
             'lstm_dims': 512, # * 2          
-            'margin': 0.5,
+            'margin': 0.6,
             #'sim_measure':'cos',#similarity measure: gesd, cosine, aesd
          
     }

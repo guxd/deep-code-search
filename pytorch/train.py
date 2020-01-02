@@ -270,21 +270,18 @@ def parse_args():
     parser.add_argument('--save_every', type=int, default=10000, help='interval to evaluation to concrete results')
     parser.add_argument('--seed', type=int, default=1111, help='random seed')
         
-    parser.add_argument('--learning_rate', type=float, default=1e-4, help='learning rate')
-    parser.add_argument('--adam_epsilon', type=float, default=1e-8)
-    parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight deay if we apply some.")
-    parser.add_argument('--warmup_steps', type=int, default=5000)
-    parser.add_argument('--fp16', action='store_true', help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit")
-    parser.add_argument('--fp16_opt_level', type=str, default='O1',
-                        help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
-                             "See details at https://nvidia.github.io/apex/amp.html")
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
 
      # Model Hyperparameters for automl tuning
-    parser.add_argument('--emb_size', type=int, default=-1 help = 'embedding dim')
+    parser.add_argument('--emb_size', type=int, default=-1, help = 'embedding dim')
     parser.add_argument('--n_hidden', type=int, default= -1, help='number of hidden dimension of code/desc representation')
     parser.add_argument('--lstm_dims', type=int, default= -1)         
     parser.add_argument('--margin', type=float, default= -1)
+    
+    parser.add_argument('--learning_rate', type=float, help='learning rate')
+    parser.add_argument('--adam_epsilon', type=float)
+    parser.add_argument("--weight_decay", type=float, help="Weight deay if we apply some.")
+    parser.add_argument('--warmup_steps', type=int)
     
     return parser.parse_args()
 
