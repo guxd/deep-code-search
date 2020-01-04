@@ -19,7 +19,7 @@ def config_JointEmbeder():
             'use_apis':'use.apiseq.h5',
             'use_tokens':'use.tokens.h5',     
             #results data(code vectors)            
-            'use_codevecs':'use.codevecs.normalized.h5',#'use.codevecs.h5',         
+            'use_codevecs':'use.codevecs.h5',        
                    
             #parameters
             'name_len': 6,
@@ -51,9 +51,8 @@ def config_JointEmbeder():
             # recurrent
             'lstm_dims': 512, # * 2          
             'margin': 0.6,
-            #'sim_measure':'cos',#similarity measure: gesd, cosine, aesd
-         
+            'sim_measure':'cos',#similarity measure: cos, poly, sigmoid, euc, gesd, aesd. see https://arxiv.org/pdf/1508.01585.pdf
+                         #cos, poly and sigmoid are fast with simple dot, while euc, gesd and aesd are slow with vector normalization.
     }
     return conf
-
 

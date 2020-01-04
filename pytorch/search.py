@@ -12,7 +12,7 @@ from tensorboardX import SummaryWriter # install tensorboardX (pip install tenso
 
 import torch
 
-from utils import normalize, sent2indexes
+from utils import normalize, similarity, sent2indexes
 from data_loader import load_dict, load_vecs
 import models, configs
   
@@ -58,12 +58,13 @@ def search(config, model, vocab, query, n_results=10):
     desc = torch.from_numpy(desc).unsqueeze(0).to(device)
     desc_len = torch.from_numpy(desc_len).clamp(max=config['desc_len']).to(device)
     with torch.no_grad():
-        desc_repr = model.desc_encoding(desc, desc_len).data.cpu().numpy()
-    desc_repr = normalize(desc_repr).astype(np.float32).T # [dim x 1]
+        desc_repr = model.desc_encoding(desc, desc_len).data.cpu().numpy().astype(np.float32) # [1 x dim]
+    if config['sim_measure']=='cos': # normalizing vector for fast cosine computation
+        desc_repr = normalize(desc_repr) # [1 x dim]
     results =[]
     threads = []
     for i, codevecs_chunk in enumerate(codevecs):
-        t = threading.Thread(target=search_thread, args = (results, desc_repr, codevecs_chunk, i, n_results))
+        t = threading.Thread(target=search_thread, args = (results, desc_repr, codevecs_chunk, i, n_results, config['sim_measure']))
         threads.append(t)
     for t in threads:
         t.start()
@@ -71,11 +72,13 @@ def search(config, model, vocab, query, n_results=10):
         t.join()
     return results
 
-def search_thread(results, desc_repr, codevecs, i, n_results):        
+def search_thread(results, desc_repr, codevecs, i, n_results, sim_measure):        
 #1. compute code similarities
-    chunk_sims = np.dot(codevecs, desc_repr) # [pool_size x 1]
-    chunk_sims = np.squeeze(chunk_sims, axis=1) # squeeze dim
-
+    if sim_measures=='cos':
+        chunk_sims = np.dot(codevecs, desc_repr.T)[:,0] # [pool_size]
+    else:
+        chunk_sims = similarity(codevecs, desc_repr, sim_measure) # [pool_size]
+    
 #2. select the top K results
     negsims = np.negative(chunk_sims)
     maxinds = np.argpartition(negsims, kth=n_results-1)

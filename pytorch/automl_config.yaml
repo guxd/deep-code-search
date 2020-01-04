@@ -33,3 +33,6 @@ hyperparams:
     lstm_dims:
         type: values
         values: [256, 512, 768, 1024]
+    sim_measure:
+        type: values
+        values: ['cos','poly', 'sigmoid', 'euc', 'gesd', 'aesd']

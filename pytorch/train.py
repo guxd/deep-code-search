@@ -18,7 +18,7 @@ import torch
 
 import models, configs, data_loader 
 from modules import get_cosine_schedule_with_warmup
-from utils import normalize, dot_np
+from utils import similarity, normalize
 from data_loader import *
 
 try: 
@@ -153,7 +153,7 @@ def train(args):
 
             if itr_global % args.valid_every == 0:
                 logger.info("validating..")                  
-                acc1, mrr, map1, ndcg = validate(valid_set, model, 10000, 1)  
+                acc1, mrr, map1, ndcg = validate(valid_set, model, 10000, 1, config['sim_measure'])  
                 logger.info(f'ACC={acc1}, MRR={mrr}, MAP={map1}, nDCG={ndcg}')
                 if tb_writer is not None:
                     tb_writer.add_scalar('acc', acc1, itr_global)
@@ -170,7 +170,7 @@ def train(args):
                     nsml.save(itr_global)
 
 ##### Evaluation #####
-def validate(valid_set, model, pool_size, K):
+def validate(valid_set, model, pool_size, K, sim_measure):
     """
     simple validation in a code pool. 
     @param: poolsize - size of the code pool, if -1, load the whole test set
@@ -227,20 +227,26 @@ def validate(valid_set, model, pool_size, K):
             code_batch = [tensor.to(device) for tensor in batch[:3]]
             desc_batch = [tensor.to(device) for tensor in batch[3:5]]
         with torch.no_grad():
-            code_repr=model.code_encoding(*code_batch).data.cpu().numpy()
-            desc_repr=model.desc_encoding(*desc_batch).data.cpu().numpy() # [poolsize x hid_size]
-        code_reprs.append(normalize(code_repr).astype(np.float32))
-        desc_reprs.append(normalize(desc_repr).astype(np.float32))
+            code_repr=model.code_encoding(*code_batch).data.cpu().numpy().astype(np.float32)
+            desc_repr=model.desc_encoding(*desc_batch).data.cpu().numpy().astype(np.float32) # [poolsize x hid_size]
+            if sim_measure=='cos':
+                code_repr = normalize(code_repr)
+                desc_repr = normalize(desc_repr)
+        code_reprs.append(code_repr)
+        desc_reprs.append(desc_repr)
         n_processed += batch[0].size(0)
     code_reprs, desc_reprs = np.vstack(code_reprs), np.vstack(desc_reprs)
      
     for k in tqdm(range(0, n_processed, pool_size)):
         code_pool, desc_pool = code_reprs[k:k+pool_size], desc_reprs[k:k+pool_size] 
         for i in range(min(10000, pool_size)): # for i in range(pool_size):
-            desc_vec = np.expand_dims(desc_pool[i], axis=1) # [dim x 1]
-            n_results = K          
-            sims = np.dot(code_pool, desc_vec) # [pool_size x 1]
-            sims = np.squeeze(sims, axis=1)
+            desc_vec = np.expand_dims(desc_pool[i], axis=0) # [1 x dim]
+            n_results = K    
+            if sim_measure=='cos':
+                sims = np.dot(code_pool, desc_vec.T)[:,0] # [pool_size]
+            else:
+                sims = similarity(code_pool, desc_vec, sim_measure) # [pool_size]
+                
             negsims=np.negative(sims)
             predict = np.argpartition(negsims, kth=n_results-1)#predict=np.argsort(negsims)#
             predict = predict[:n_results]   
@@ -277,6 +283,7 @@ def parse_args():
     parser.add_argument('--n_hidden', type=int, default= -1, help='number of hidden dimension of code/desc representation')
     parser.add_argument('--lstm_dims', type=int, default= -1)         
     parser.add_argument('--margin', type=float, default= -1)
+    parser.add_argument('--sim_measure', type=str, help='similarity measure for training')
     
     parser.add_argument('--learning_rate', type=float, help='learning rate')
     parser.add_argument('--adam_epsilon', type=float)
