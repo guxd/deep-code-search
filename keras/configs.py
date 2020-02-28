@@ -46,7 +46,7 @@ def config_JointEmbeddingModel():
                 'top1': 0.4,
             },
             'save_every': 10,
-            'reload':0, #epoch that the model is reloaded from . If reload=0, then train from scratch
+            'reload':-1, #epoch that the model is reloaded from . If reload=0, then train from scratch
         },
 
         'model_params': {
@@ -58,7 +58,7 @@ def config_JointEmbeddingModel():
             'init_embed_weights_tokens': None,#'word2vec_100_tokens.h5', 
             'init_embed_weights_desc': None,#'word2vec_100_desc.h5',           
             'margin': 0.05,
-            'sim_measure':'cos',#similarity measure: gesd, cosine, aesd
+            'sim_measure':'cos',#similarity measure: gesd, cos, aesd
         }        
     }
     return config

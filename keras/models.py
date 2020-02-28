@@ -1,5 +1,4 @@
 import os
-#from tensorflow.keras.engine import Input
 from tensorflow.keras.layers import Input, Concatenate, Dot, Embedding, Dropout, Lambda, Activation, LSTM, Dense
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Model
@@ -24,7 +23,6 @@ class JointEmbeddingModel:
         self._sim_model = None        
         self._training_model = None
         #self.prediction_model = None       
-
     
     def build(self):
         '''
@@ -43,7 +41,7 @@ class JointEmbeddingModel:
                               output_dim=self.model_params.get('n_embed_dims', 100),
                               weights=init_emb_weights,
                               mask_zero=False,#Whether 0 in the input is a special "padding" value that should be masked out. 
-                              #If set True, all subsequent layers in the model must support masking, otherwise an exception will be raised.
+                              #If True, all subsequent layers in the model must support masking, otherwise an exception will be raised.
                               name='embedding_methname')
         methname_embedding = embedding(methname)
         dropout = Dropout(0.25,name='dropout_methname_embed')
@@ -72,7 +70,7 @@ class JointEmbeddingModel:
                               output_dim=self.model_params.get('n_embed_dims', 100),
                               #weights=weights,
                               mask_zero=False,#Whether 0 in the input is a special "padding" value that should be masked out. 
-                                         #If set True, all subsequent layers must support masking, otherwise an exception will be raised.
+                                         #If True, all subsequent layers must support masking, otherwise an exception will be raised.
                               name='embedding_apiseq')
         apiseq_embedding = embedding(apiseq)
         dropout = Dropout(0.25,name='dropout_apiseq_embed')
@@ -102,7 +100,7 @@ class JointEmbeddingModel:
                               output_dim=self.model_params.get('n_embed_dims', 100),
                               weights=init_emb_weights,
                               #mask_zero=True,#Whether 0 in the input is a special "padding" value that should be masked out. 
-                              #If set True, all subsequent layers must support masking, otherwise an exception will be raised.
+                              #If True, all subsequent layers must support masking, otherwise an exception will be raised.
                               name='embedding_tokens')
         tokens_embedding = embedding(tokens)
         dropout = Dropout(0.25,name='dropout_tokens_embed')
@@ -136,7 +134,7 @@ class JointEmbeddingModel:
                               output_dim=self.model_params.get('n_embed_dims', 100),
                               weights=init_emb_weights,
                               mask_zero=True,#Whether 0 in the input is a special "padding" value that should be masked out. 
-                                      #If set True, all subsequent layers must support masking, otherwise an exception will be raised.
+                                      #If True, all subsequent layers must support masking, otherwise an exception will be raised.
                               name='embedding_desc')
         desc_embedding = embedding(desc)
         dropout = Dropout(0.25,name='dropout_desc_embed')
@@ -158,7 +156,6 @@ class JointEmbeddingModel:
         desc_repr = activation(desc_pool)
         
         self._desc_repr_model=Model(inputs=[desc],outputs=[desc_repr],name='desc_repr_model')
-        
             
         """
         3: calculate the cosine similarity between code and desc
@@ -172,7 +169,6 @@ class JointEmbeddingModel:
         self._sim_model=sim_model  #for model evaluation  
 
         
-        
         '''
         4:Build training model
         '''
@@ -184,16 +180,8 @@ class JointEmbeddingModel:
         logger.debug('Building training model')
         self._training_model=Model(inputs=[self.methname,self.apiseq,self.tokens,self.desc_good,self.desc_bad],
                                    outputs=[loss],name='training_model')
-   
-
-    def compile(self, optimizer, **kwargs):
-        logger.info('compiling models')
-        self._code_repr_model.compile(loss='cosine_proximity', optimizer=optimizer, **kwargs)
-        self._desc_repr_model.compile(loss='cosine_proximity', optimizer=optimizer, **kwargs)
-        self._training_model.compile(loss=lambda y_true, y_pred: y_pred+y_true-y_true, optimizer=optimizer, **kwargs)
-        #+y_true-y_true is for avoiding an unused input warning, it can be simply +y_true since y_true is always 0 in the training set.
-        self._sim_model.compile(loss='binary_crossentropy', optimizer=optimizer, **kwargs)
         
+                
     def summary(self, export_path):
         print('Summary of the code representation model')
         self._code_repr_model.summary()
@@ -207,7 +195,15 @@ class JointEmbeddingModel:
         print ('Summary of the training model')
         self._training_model.summary()      
         #plot_model(self._training_model, show_shapes=True, to_file=export_path+'training_model.png')  
-              
+   
+
+    def compile(self, optimizer, **kwargs):
+        logger.info('compiling models')
+        self._code_repr_model.compile(loss='cosine_proximity', optimizer=optimizer, **kwargs)
+        self._desc_repr_model.compile(loss='cosine_proximity', optimizer=optimizer, **kwargs)
+        self._training_model.compile(loss=lambda y_true, y_pred: y_pred+y_true-y_true, optimizer=optimizer, **kwargs)
+        #+y_true-y_true is for avoiding an unused input warning, it can be simply +y_true since y_true is always 0 in the training set.
+        self._sim_model.compile(loss='binary_crossentropy', optimizer=optimizer, **kwargs)
 
     def fit(self, x, **kwargs):
         assert self._training_model is not None, 'Must compile the model before fitting data'

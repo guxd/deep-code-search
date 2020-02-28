@@ -3,16 +3,16 @@ A keras implementation of the paper [Deep Code Search](https://guxd.github.io/pa
 
 ## Dependency
 > Tested in Ubuntu 16.04
-* Python 2.7-3.6
-* Keras 2.0.0 or newer
-* Tensorflow or Theano 0.8.0~0.9.1
+* Python 3.6
+* Keras 2.3.1 or newer
+* Tensorflow 2.0.0 or Theano 0.8.0~0.9.1
 
 ## Code Structures
 
  - `models.py`: Neural network models for code/desc representation and similarity measure.
  
  - `main.py`: The main entry for code search, including four sub-tasks: 
-     1) Train: train code/desc representaton models; 
+     1) Train: train the code/desc representaton models; 
      2) Eval: evaluate the learnt code/desc representation models; 
      3) Code Embedding: encode code into vectors and store them to a file; 
      4) Search: search relevant code for a given query.
@@ -24,7 +24,7 @@ A keras implementation of the paper [Deep Code Search](https://guxd.github.io/pa
 ## Usage
 
    ### Data Preparation
-  The `/data` folder provides a small sample dataset for quick running. 
+  The `/data` folder provides a small dummy dataset for quick deployment. 
   To train and test our model:
   
   1) Download and unzip real dataset from [Google Drive](https://drive.google.com/drive/folders/1GZYLT_lzhlVczXjD6dgwVUvDDPHMB6L7?usp=sharing) or [Baidu Pan](https://pan.baidu.com/s/1U_MtFXqq0C-Qh8WUFAWGvg) for Chinese users.

@@ -15,21 +15,21 @@ import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s: %(name)s: %(levelname)s: %(message)s")
 
-from utils import cos_np, normalize, cos_np_for_normalized, pad, convert, revert
+from utils import normalize, pad, convert, revert
 import models, configs, data_loader
 
 class SearchEngine:
     def __init__(self, args, conf=None):
         self.data_path = args.data_path + args.dataset+'/' 
         self.train_params = conf.get('training_params', dict())
-        self.data_params=conf.get('data_params',dict())
-        self.model_params=conf.get('model_params',dict())
+        self.data_params = conf.get('data_params',dict())
+        self.model_params = conf.get('model_params',dict())
         
         self._eval_sets = None
         
-        self._code_reprs=None
-        self._codebase=None
-        self._codebase_chunksize=2000000
+        self._code_reprs = None
+        self._codebase = None
+        self._codebase_chunksize = 2000000
 
     ##### Model Loading / saving #####
     def save_model(self, model, epoch):
@@ -140,7 +140,7 @@ class SearchEngine:
             descs = data_loader.load_hdf5(self.data_path+self.data_params['valid_desc'], 0, poolsize) 
             self._eval_sets={'methnames':methnames, 'apiseqs':apiseqs, 'tokens':tokens, 'descs':descs}
             
-        acc,mrr,map,ndcg = 0,0,0,0
+        accs,mrrs,maps,ndcgs = [], [], [], []
         data_len = len(self._eval_sets['descs'])
         for i in tqdm(range(data_len)):
             desc=self._eval_sets['descs'][i]#good desc
@@ -151,19 +151,15 @@ class SearchEngine:
             n_results = K          
             sims = model.predict([methnames, apiseqs,tokens, descs], batch_size=data_len).flatten()
             negsims= np.negative(sims)
-            predict= np.argsort(negsims)#predict = np.argpartition(negsims, kth=n_results-1)
+            predict = np.argpartition(negsims, kth=n_results-1)
             predict = predict[:n_results]   
             predict = [int(k) for k in predict]
             real=[i]
-            acc+=ACC(real,predict)
-            mrr+=MRR(real,predict)
-            map+=MAP(real,predict)
-            ndcg+=NDCG(real,predict)                          
-        acc = acc / float(data_len)
-        mrr = mrr / float(data_len)
-        map = map / float(data_len)
-        ndcg= ndcg/ float(data_len)
-        logger.info(f'ACC={acc}, MRR={mrr}, MAP={map}, nDCG={ndcg}')        
+            accs.append(ACC(real,predict))
+            mrrs.append(MRR(real,predict))
+            maps.append(MAP(real,predict))
+            ndcgs.append(NDCG(real,predict))                          
+        logger.info(f'ACC={np.mean(accs)}, MRR={np.mean(mrrs)}, MAP={np.mean(maps)}, nDCG={np.mean(ndcgs)}')        
         return acc,mrr,map,ndcg
     
     
@@ -178,8 +174,8 @@ class SearchEngine:
         tokens = pad(tokens, self.data_params['tokens_len'])
         
         logger.info('Representing code ..')
-        vecs= model.repr_code([methnames, apiseqs, tokens], batch_size=1000)
-        vecs= vecs.astype('float32')
+        vecs= model.repr_code([methnames, apiseqs, tokens], batch_size=10000)
+        vecs= vecs.astype(np.float)
         vecs= normalize(vecs)
         return vecs
             
@@ -188,8 +184,8 @@ class SearchEngine:
         desc=[convert(vocab, query)]#convert desc sentence to word indices
         padded_desc = pad(desc, self.data_params['desc_len'])
         desc_repr=model.repr_desc([padded_desc])
-        desc_repr=desc_repr.astype('float32')
-        
+        desc_repr=desc_repr.astype(np.float32)
+        desc_repr = normalize(desc_repr).T # [dim x 1]
         codes, sims = [], []
         threads=[]
         for i,code_reprs_chunk in enumerate(self._code_reprs):
@@ -203,14 +199,14 @@ class SearchEngine:
                  
     def search_thread(self, codes, sims, desc_repr, code_reprs, i, n_results):        
     #1. compute similarity
-        chunk_sims=cos_np_for_normalized(normalize(desc_repr),code_reprs) 
-        
+        chunk_sims=np.dot(code_reprs, desc_repr) # [pool_size x 1] 
+        chunk_sims = np.squeeze(chunk_sims, axis=1)
     #2. choose top results
-        negsims=np.negative(chunk_sims[0])
+        negsims=np.negative(chunk_sims)
         maxinds = np.argpartition(negsims, kth=n_results-1)
         maxinds = maxinds[:n_results]        
-        chunk_codes=[self._codebase[i][k] for k in maxinds]
-        chunk_sims=chunk_sims[0][maxinds]
+        chunk_codes = [self._codebase[i][k] for k in maxinds]
+        chunk_sims = chunk_sims[maxinds]
         codes.extend(chunk_codes)
         sims.extend(chunk_sims)
         

@@ -33,7 +33,7 @@ def load_code_reprs(path, chunk_size):
     h5f = tables.open_file(path)
     vecs = h5f.root.vecs
     for i in range(0, len(vecs), chunk_size):
-        codereprs.append(vecs[i:i+ chunk_size])
+        codereprs.append(vecs[i: i+ chunk_size])
     h5f.close()
     return codereprs
 
@@ -49,7 +49,8 @@ def save_code_reprs(vecs, path):
 def load_hdf5(vecfile, start_offset, chunk_size):
     """reads training sentences(list of int array) from a hdf5 file"""  
     table = tables.open_file(vecfile)
-    data, index = (table.get_node('/phrases'),table.get_node('/indices'))
+    data = table.get_node('/phrases')[:].astype(np.int)
+    index = table.get_node('/indices')[:]
     data_len = index.shape[0]
     if chunk_size==-1:#if chunk_size is set to -1, then, load all data
         chunk_size=data_len
@@ -60,6 +61,6 @@ def load_hdf5(vecfile, start_offset, chunk_size):
     for offset in tqdm(range(start_offset, start_offset+chunk_size)):
         offset = offset%data_len
         len, pos = index[offset]['length'], index[offset]['pos']
-        sents.append(data[pos:pos + len].astype('int32'))
+        sents.append(data[pos:pos + len])
     table.close()
     return sents 
