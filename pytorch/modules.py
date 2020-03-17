@@ -89,7 +89,7 @@ class SeqEncoder(nn.Module):
             h_n = h_n.index_select(1, inv_indices)
         h_n = h_n.view(self.n_layers, 2, batch_size, self.hidden_size) #[n_layers x n_dirs x batch_sz x hid_sz]
         h_n = h_n[-1] # get the last layer [n_dirs x batch_sz x hid_sz]
-############comment the following line significantly improves the performance, why? #####################################
+############commenting the following line significantly improves the performance, why? #####################################
         #h_n = h_n.transpose(1, 0).contiguous() [batch_size x n_dirs x hid_sz]
         encoding = h_n.view(batch_size,-1) #[batch_sz x (n_dirs*hid_sz)]
         #pooled_encoding = F.max_pool1d(hids.transpose(1,2), seq_len).squeeze(2) # [batch_size x hid_size*2]

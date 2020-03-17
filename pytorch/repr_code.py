@@ -23,7 +23,8 @@ def repr_code(args):
     logger.info('Constructing Model..')
     model = getattr(models, args.model)(config)#initialize the model
     if args.reload_from>0:
-        model.load_state_dict(torch.load(f'./output/{args.model}/{args.dataset}/models/epo{args.reload_from}.h5', map_location=device))       
+        ckpt_path = f'./output/{args.model}/{args.dataset}/models/step{args.reload_from}.h5'
+        model.load_state_dict(torch.load(ckpt_path, map_location=device))       
     model = model.to(device)   
     model.eval()
 
@@ -60,7 +61,7 @@ def parse_args():
     parser.add_argument('--data_path', type=str, default='./data/', help='location of the data corpus')
     parser.add_argument('--model', type=str, default='JointEmbeder', help='model name')
     parser.add_argument('-d', '--dataset', type=str, default='github', help='dataset')
-    parser.add_argument('--reload_from', type=int, default=-1, help='epoch to reload from')
+    parser.add_argument('--reload_from', type=int, default=-1, help='step to reload from')
     parser.add_argument('--batch_size', type=int, default=10000, help='how many instances for encoding and normalization at each step')
     parser.add_argument('--chunk_size', type=int, default=2000000, help='split code vector into chunks and store them individually. '\
                         'Note: should be consistent with the same argument in the search.py')

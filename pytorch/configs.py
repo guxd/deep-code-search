@@ -36,9 +36,9 @@ def config_JointEmbeder():
         #training_params            
             'batch_size': 64,
             'chunk_size':200000,
-            'nb_epoch': 10,
+            'nb_epoch': 15,
             #'optimizer': 'adam',
-            'learning_rate':1e-3,
+            'learning_rate':2.08e-4,
             'adam_epsilon':1e-8,
             'warmup_steps':5000,
             'fp16': False,
@@ -47,12 +47,14 @@ def config_JointEmbeder():
 
         # model_params
             'emb_size': 512,
-            'n_hidden': 1024,#number of hidden dimension of code/desc representation
+            'n_hidden': 512,#number of hidden dimension of code/desc representation
             # recurrent
-            'lstm_dims': 512, # * 2          
-            'margin': 0.6,
+            'lstm_dims': 256, # * 2          
+            'margin': 0.3986,
             'sim_measure':'cos',#similarity measure: cos, poly, sigmoid, euc, gesd, aesd. see https://arxiv.org/pdf/1508.01585.pdf
                          #cos, poly and sigmoid are fast with simple dot, while euc, gesd and aesd are slow with vector normalization.
     }
     return conf
+
+
 

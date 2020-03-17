@@ -54,13 +54,6 @@ def train(args):
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     device = torch.device(f"cuda:{args.gpu_id}" if torch.cuda.is_available() else "cpu") 
-    
-    def save_model(model, epoch):
-        torch.save(model.state_dict(), f'./output/{args.model}/{args.dataset}/models/epo{epoch}.h5')
-
-    def load_model(model, epoch, to_device):
-        assert os.path.exists(f'./output/{args.model}/{args.dataset}/models/epo{epoch}.h5'), f'Weights at epoch {epoch} not found'
-        model.load_state_dict(torch.load(f'./output/{args.model}/{args.dataset}/models/epo{epoch}.h5', map_location=to_device))
 
     config=getattr(configs, 'config_'+args.model)()
     if args.automl:
@@ -75,7 +68,7 @@ def train(args):
                                   config['train_api'], config['api_len'],
                                   config['train_tokens'], config['tokens_len'],
                                   config['train_desc'], config['desc_len'])
-    valid_set=eval(config['dataset_name'])(data_path,
+    valid_set = eval(config['dataset_name'])(data_path,
                                   config['valid_name'], config['name_len'],
                                   config['valid_api'], config['api_len'],
                                   config['valid_tokens'], config['tokens_len'],
@@ -84,16 +77,29 @@ def train(args):
                                        shuffle=True, drop_last=True, num_workers=1)
     
     ###############################################################################
-    # Define the models
+    # Define Model
     ###############################################################################
     logger.info('Constructing Model..')
     model = getattr(models, args.model)(config)#initialize the model
+    
+    def save_model(model, ckpt_path):
+        torch.save(model.state_dict(), ckpt_path)
+
+    def load_model(model, ckpt_path, to_device):
+        assert os.path.exists(ckpt_path), f'Weights not found'
+        model.load_state_dict(torch.load(ckpt_path, map_location=to_device))
+        
     if args.reload_from>0:
-        load_model(model, args.reload_from, device)    
-    logger.info('done')
+        ckpt = f'./output/{args.model}/{args.dataset}/models/step{args.reload_from}.h5'
+        load_model(model, ckpt, device)    
+        
     if IS_ON_NSML:
         bind_nsml(model)
-    model.to(device)
+    model.to(device)    
+    
+    ###############################################################################
+    # Prepare the Optimizer
+    ###############################################################################
 
     no_decay = ['bias', 'LayerNorm.weight']
     optimizer_grouped_parameters = [
@@ -110,7 +116,10 @@ def train(args):
         except ImportError:
             raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
         model, optimizer = amp.initialize(model, optimizer, opt_level=config['fp16_opt_level'])
-        
+    
+    ###############################################################################
+    # Training Process
+    ###############################################################################    
     n_iters = len(data_loader)
     itr_global = args.reload_from+1 
     for epoch in range(int(args.reload_from/n_iters)+1, config['nb_epoch']+1): 
@@ -153,21 +162,21 @@ def train(args):
 
             if itr_global % args.valid_every == 0:
                 logger.info("validating..")                  
-                acc1, mrr, map1, ndcg = validate(valid_set, model, 10000, 1, config['sim_measure'])  
-                logger.info(f'ACC={acc1}, MRR={mrr}, MAP={map1}, nDCG={ndcg}')
+                valid_result = validate(valid_set, model, 10000, 1, config['sim_measure'])  
+                logger.info(valid_result)
                 if tb_writer is not None:
-                    tb_writer.add_scalar('acc', acc1, itr_global)
-                    tb_writer.add_scalar('mrr', mrr, itr_global)
-                    tb_writer.add_scalar('map', map1, itr_global)
-                    tb_writer.add_scalar('ndcg', ndcg, itr_global)
+                    for key, value in valid_result.items():
+                        tb_writer.add_scalar(key, value, itr_global)
                 if IS_ON_NSML:
                     summary = {"summary": True, "scope": locals(), "step": itr_global}
-                    summary.update({'acc':acc1,'mrr':mrr, 'map':map1, 'ndcg':ndcg})
+                    summary.update(valid_result)
                     nsml.report(**summary)
+                    
             if itr_global % args.save_every == 0:
-                save_model(model, itr_global)
+                ckpt_path = f'./output/{args.model}/{args.dataset}/models/step{itr_global}.h5'
+                save_model(model, ckpt_path)
                 if IS_ON_NSML:
-                    nsml.save(itr_global)
+                    nsml.save(checkpoint=f'model_step{itr_global}')
 
 ##### Evaluation #####
 def validate(valid_set, model, pool_size, K, sim_measure):
@@ -184,26 +193,26 @@ def validate(valid_set, model, pool_size, K, sim_measure):
         return sum/float(len(real))
     def MAP(real,predict):
         sum=0.0
-        for id,val in enumerate(real):
+        for id, val in enumerate(real):
             try: index=predict.index(val)
             except ValueError: index=-1
             if index!=-1: sum=sum+(id+1)/float(index+1)
         return sum/float(len(real))
-    def MRR(real,predict):
+    def MRR(real, predict):
         sum=0.0
         for val in real:
-            try: index=predict.index(val)
+            try: index = predict.index(val)
             except ValueError: index=-1
             if index!=-1: sum=sum+1.0/float(index+1)
         return sum/float(len(real))
-    def NDCG(real,predict):
+    def NDCG(real, predict):
         dcg=0.0
         idcg=IDCG(len(real))
-        for i,predictItem in enumerate(predict):
+        for i, predictItem in enumerate(predict):
             if predictItem in real:
-                itemRelevance=1
+                itemRelevance = 1
                 rank = i+1
-                dcg+=(math.pow(2,itemRelevance)-1.0)*(math.log(2)/math.log(rank+1))
+                dcg +=(math.pow(2,itemRelevance)-1.0)*(math.log(2)/math.log(rank+1))
         return dcg/float(idcg)
     def IDCG(n):
         idcg=0
@@ -223,9 +232,6 @@ def validate(valid_set, model, pool_size, K, sim_measure):
         if len(batch) == 10: # names, name_len, apis, api_len, toks, tok_len, descs, desc_len, bad_descs, bad_desc_len
             code_batch = [tensor.to(device) for tensor in batch[:6]]
             desc_batch = [tensor.to(device) for tensor in batch[6:8]]
-        else: # code_ids, type_ids, code_mask, good_ids, good_mask, bad_ids, bad_mask
-            code_batch = [tensor.to(device) for tensor in batch[:3]]
-            desc_batch = [tensor.to(device) for tensor in batch[3:5]]
         with torch.no_grad():
             code_repr=model.code_encoding(*code_batch).data.cpu().numpy().astype(np.float32)
             desc_repr=model.desc_encoding(*desc_batch).data.cpu().numpy().astype(np.float32) # [poolsize x hid_size]
@@ -256,9 +262,7 @@ def validate(valid_set, model, pool_size, K, sim_measure):
             mrrs.append(MRR(real,predict))
             maps.append(MAP(real,predict))
             ndcgs.append(NDCG(real,predict))                     
-    return np.mean(accs),np.mean(mrrs),np.mean(maps),np.mean(ndcgs)
-    
-   
+    return {'acc':np.mean(accs), 'mrr': np.mean(mrrs), 'map': np.mean(maps), 'ndcg': np.mean(ndcgs)}   
     
 def parse_args():
     parser = argparse.ArgumentParser("Train and Validate The Code Search (Embedding) Model")
@@ -279,16 +283,20 @@ def parse_args():
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
 
      # Model Hyperparameters for automl tuning
-    parser.add_argument('--emb_size', type=int, default=-1, help = 'embedding dim')
+    #parser.add_argument('--emb_size', type=int, default=-1, help = 'embedding dim')
     parser.add_argument('--n_hidden', type=int, default= -1, help='number of hidden dimension of code/desc representation')
     parser.add_argument('--lstm_dims', type=int, default= -1)         
     parser.add_argument('--margin', type=float, default= -1)
-    parser.add_argument('--sim_measure', type=str, help='similarity measure for training')
+    parser.add_argument('--sim_measure', type=str, default = 'cos', help='similarity measure for training')
     
     parser.add_argument('--learning_rate', type=float, help='learning rate')
-    parser.add_argument('--adam_epsilon', type=float)
-    parser.add_argument("--weight_decay", type=float, help="Weight deay if we apply some.")
-    parser.add_argument('--warmup_steps', type=int)
+    #parser.add_argument('--adam_epsilon', type=float)
+    #parser.add_argument("--weight_decay", type=float, help="Weight deay if we apply some.")
+    #parser.add_argument('--warmup_steps', type=int)
+    
+    # reserved args for automl pbt
+    parser.add_argument('--pause', default=0, type=int)
+    parser.add_argument('--iteration', default=0, type=str)
     
     return parser.parse_args()
 

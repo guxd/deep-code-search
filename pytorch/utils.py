@@ -34,10 +34,10 @@ def similarity(vec1, vec2, measure='cos'):
         vec2_norm = normalize(vec2)
         return np.dot(vec1_norm, vec2_norm.T)[:,0]
     elif measure=='poly':
-        return (0.5*np.dot(code_vec, desc_vec.T).diagonal()+1)**2
+        return (0.5*np.dot(vec1, vec2.T).diagonal()+1)**2
     elif measure=='sigmoid':
-        return np.tanh(np.dot(code_vec, desc_vec.T).diagonal()+1)
-    elif measure in ['enc', 'gesd', 'aesd']: #https://arxiv.org/pdf/1508.01585.pdf 
+        return np.tanh(np.dot(vec1, vec2.T).diagonal()+1)
+    elif measure in ['euc', 'gesd', 'aesd']: #https://arxiv.org/pdf/1508.01585.pdf 
         euc_dist = np.linalg.norm(vec1-vec2, axis=1)
         euc_sim = 1 / (1 + euc_dist)
         if measure=='euc': return euc_sim                
