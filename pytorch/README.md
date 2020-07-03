@@ -26,10 +26,10 @@ PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
  - `utils.py`: utilities for models and training. 
 
 ## Pretrained Model
-   If you want a quick test, [here](https://drive.google.com/file/d/1sq9llpd-Snjdr2QKLx8ndnOtczUJGRSK/view?usp=sharing) is a pretrained model. Put it in `./output/JointEmbeder/github/models/` and run:
+   If you want a quick test, [here](https://drive.google.com/file/d/15HoKv0efrVXNTsqCxoq2Swgh6ohuq5jI/view?usp=sharing) is a pretrained model. Put it in `./output/JointEmbeder/github/models/` and run:
    ```
-   python repr_code.py --reload_from 3650000
-   python search.py --reload_from 3650000
+   python repr_code.py --reload_from 4000000
+   python search.py --reload_from 4000000
    ```
  
 ## Usage
