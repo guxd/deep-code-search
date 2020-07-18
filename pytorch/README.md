@@ -31,6 +31,7 @@ PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    python repr_code.py --reload_from 4000000
    python search.py --reload_from 4000000
    ```
+   <img src="https://user-images.githubusercontent.com/6091014/86455134-2a71dc00-bd5b-11ea-98cb-6dc1ef1095df.png" width=50% height=50%>
  
 ## Usage
 
