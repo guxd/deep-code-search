@@ -74,7 +74,7 @@ def search(config, model, vocab, query, n_results=10):
 
 def search_thread(results, desc_repr, codevecs, i, n_results, sim_measure):        
 #1. compute code similarities
-    if sim_measures=='cos':
+    if sim_measure=='cos':
         chunk_sims = np.dot(codevecs, desc_repr.T)[:,0] # [pool_size]
     else:
         chunk_sims = similarity(codevecs, desc_repr, sim_measure) # [pool_size]
