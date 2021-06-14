@@ -115,6 +115,8 @@ if __name__ == '__main__':
     input_dir='./data/github/'
     train_set=CodeSearchDataset(input_dir, 'train.name.h5', 6, 'train.apiseq.h5', 20, 'train.tokens.h5', 30, 'train.desc.h5', 30)
     train_data_loader=torch.utils.data.DataLoader(dataset=train_set, batch_size=1, shuffle=False, num_workers=1)
+    valid_set=CodeSearchDataset(input_dir, 'valid.name.h5', 6, 'valid.apiseq.h5', 20, 'valid.tokens.h5', 30, 'valid.desc.h5', 30)
+    valid_data_loader=torch.utils.data.DataLoader(dataset=valid_set, batch_size=1, shuffle=False, num_workers=1)
     use_set=CodeSearchDataset(input_dir, 'use.name.h5', 6, 'use.apiseq.h5', 20, 'use.tokens.h5', 30)
     use_data_loader=torch.utils.data.DataLoader(dataset=use_set, batch_size=1, shuffle=False, num_workers=1)
     vocab_api = load_dict(input_dir+'vocab.apiseq.json')
@@ -125,6 +127,19 @@ if __name__ == '__main__':
     print('============ Train Data ================')
     k=0
     for batch in train_data_loader:
+        batch = tuple([t.numpy() for t in batch])
+        name, name_len, apiseq, api_len, tokens, tok_len, good_desc, good_desc_len, bad_desc, bad_desc_len = batch
+        k+=1
+        if k>20: break
+        print('-------------------------------')
+        print(indexes2sent(name, vocab_name))
+        print(indexes2sent(apiseq, vocab_api))
+        print(indexes2sent(tokens, vocab_tokens))
+        print(indexes2sent(good_desc, vocab_desc))
+        
+    print('\n\n============ Valid Data ================')
+    k=0
+    for batch in valid_data_loader:
         batch = tuple([t.numpy() for t in batch])
         name, name_len, apiseq, api_len, tokens, tok_len, good_desc, good_desc_len, bad_desc, bad_desc_len = batch
         k+=1

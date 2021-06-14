@@ -32,22 +32,36 @@ def bind_nsml(model, **kwargs):
     def infer(raw_data, **kwargs):
         pass
     def load(path, *args):
-        weights = torch.load(path)
-        model.load_state_dict(weights)
+        global global_step
+        state = torch.load(os.path.join(path, 'model.pt'))
+        model.load_state_dict(state['model'])
+        global_step = state['step']
+        if 'optimizer' in state and optimizer:
+            optimizer.load_state_dict(state['optimizer'])
         logger.info(f'Load checkpoints...!{path}')
     def save(path, *args):
-        torch.save(model.state_dict(), os.path.join(path, 'model.pkl'))
+        global global_step
+        state = {
+            'model': model.state_dict(),
+            'step' : global_step
+        }
+        torch.save(state, os.path.join(path, 'model.pt'))
         logger.info(f'Save checkpoints...!{path}')
     # function in function is just used to divide the namespace.
-    nsml.bind(save, load, infer)
+    nsml.bind(save=save, load=load, infer=infer)
 
     
 def train(args):
-    fh = logging.FileHandler(f"./output/{args.model}/{args.dataset}/logs.txt")
+    timestamp = datetime.now().strftime('%Y%m%d%H%M') 
+    # make output directory if it doesn't already exist
+    os.makedirs(f'./output/{args.model}/{args.dataset}/{timestamp}/models', exist_ok=True)
+    os.makedirs(f'./output/{args.model}/{args.dataset}/{timestamp}/tmp_results', exist_ok=True)
+    
+    fh = logging.FileHandler(f"./output/{args.model}/{args.dataset}/{timestamp}/logs.txt")
                                       # create file handler which logs even debug messages
     logger.addHandler(fh)# add the handlers to the logger
-    timestamp = datetime.now().strftime('%Y%m%d%H%M') 
-    tb_writer = SummaryWriter(f"./output/{args.model}/{args.dataset}/logs/{timestamp}" ) if args.visual else None
+    
+    tb_writer = SummaryWriter(f"./output/{args.model}/{args.dataset}/{timestamp}/logs/" ) if args.visual else None
     
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -90,11 +104,14 @@ def train(args):
         model.load_state_dict(torch.load(ckpt_path, map_location=to_device))
         
     if args.reload_from>0:
-        ckpt = f'./output/{args.model}/{args.dataset}/models/step{args.reload_from}.h5'
+        ckpt = f'./output/{args.model}/{args.dataset}/{timestamp}/models/step{args.reload_from}.h5'
         load_model(model, ckpt, device)    
         
     if IS_ON_NSML:
         bind_nsml(model)
+        if args.pause:
+            nsml.paused(locals())
+            
     model.to(device)    
     
     ###############################################################################
@@ -121,7 +138,8 @@ def train(args):
     # Training Process
     ###############################################################################    
     n_iters = len(data_loader)
-    itr_global = args.reload_from+1 
+    global global_step
+    global_step = args.reload_from+1 
     for epoch in range(int(args.reload_from/n_iters)+1, config['nb_epoch']+1): 
         itr_start_time = time.time()
         losses=[]
@@ -145,38 +163,38 @@ def train(args):
             
             losses.append(loss.item())
             
-            if itr_global % args.log_every ==0:
+            if global_step % args.log_every ==0:
                 elapsed = time.time() - itr_start_time
                 logger.info('epo:[%d/%d] itr:[%d/%d] step_time:%ds Loss=%.5f'%
-                        (epoch, config['nb_epoch'], itr_global%n_iters, n_iters, elapsed, np.mean(losses)))
+                        (epoch, config['nb_epoch'], global_step%n_iters, n_iters, elapsed, np.mean(losses)))
                 if tb_writer is not None:
-                    tb_writer.add_scalar('loss', np.mean(losses), itr_global)
+                    tb_writer.add_scalar('loss', np.mean(losses), global_step)
                 if IS_ON_NSML:
-                    summary = {"summary": True, "scope": locals(), "step": itr_global}
+                    summary = {"summary": True, "scope": locals(), "step": global_step}
                     summary.update({'loss':np.mean(losses)})
                     nsml.report(**summary)
                     
                 losses=[] 
                 itr_start_time = time.time() 
-            itr_global = itr_global + 1
+            global_step = global_step + 1
 
-            if itr_global % args.valid_every == 0:
+            if global_step % args.valid_every == 0:
                 logger.info("validating..")                  
-                valid_result = validate(valid_set, model, 10000, 1, config['sim_measure'])  
+                valid_result = validate(valid_set, model, 100000, 1, config['sim_measure'])  
                 logger.info(valid_result)
                 if tb_writer is not None:
                     for key, value in valid_result.items():
-                        tb_writer.add_scalar(key, value, itr_global)
+                        tb_writer.add_scalar(key, value, global_step)
                 if IS_ON_NSML:
-                    summary = {"summary": True, "scope": locals(), "step": itr_global}
+                    summary = {"summary": True, "scope": locals(), "step": global_step}
                     summary.update(valid_result)
                     nsml.report(**summary)
                     
-            if itr_global % args.save_every == 0:
-                ckpt_path = f'./output/{args.model}/{args.dataset}/models/step{itr_global}.h5'
+            if global_step % args.save_every == 0:
+                ckpt_path = f'./output/{args.model}/{args.dataset}/{timestamp}/models/step{global_step}.h5'
                 save_model(model, ckpt_path)
                 if IS_ON_NSML:
-                    nsml.save(checkpoint=f'model_step{itr_global}')
+                    nsml.save(checkpoint=f'model_step{global_step}')
 
 ##### Evaluation #####
 def validate(valid_set, model, pool_size, K, sim_measure):
@@ -232,6 +250,9 @@ def validate(valid_set, model, pool_size, K, sim_measure):
         if len(batch) == 10: # names, name_len, apis, api_len, toks, tok_len, descs, desc_len, bad_descs, bad_desc_len
             code_batch = [tensor.to(device) for tensor in batch[:6]]
             desc_batch = [tensor.to(device) for tensor in batch[6:8]]
+        else: # code_ids, type_ids, code_mask, good_ids, good_mask, bad_ids, bad_mask
+            code_batch = [tensor.to(device) for tensor in batch[:3]]
+            desc_batch = [tensor.to(device) for tensor in batch[3:5]]
         with torch.no_grad():
             code_repr=model.code_encoding(*code_batch).data.cpu().numpy().astype(np.float32)
             desc_repr=model.desc_encoding(*desc_batch).data.cpu().numpy().astype(np.float32) # [poolsize x hid_size]
@@ -267,7 +288,7 @@ def validate(valid_set, model, pool_size, K, sim_measure):
 def parse_args():
     parser = argparse.ArgumentParser("Train and Validate The Code Search (Embedding) Model")
     parser.add_argument('--data_path', type=str, default='./data/', help='location of the data corpus')
-    parser.add_argument('--model', type=str, default='JointEmbeder', help='model name')
+    parser.add_argument('--model', type=str, default='JointEmbeder', help='model name: JointEmbeder, SelfAttnModel')
     parser.add_argument('--dataset', type=str, default='github', help='name of dataset.java, python')
     parser.add_argument('--reload_from', type=int, default=-1, help='epoch to reload from')
    
@@ -276,8 +297,8 @@ def parse_args():
     parser.add_argument('--automl', action='store_true', default=False, help='use automl')
     # Training Arguments
     parser.add_argument('--log_every', type=int, default=100, help='interval to log autoencoder training results')
-    parser.add_argument('--valid_every', type=int, default=5000, help='interval to validation')
-    parser.add_argument('--save_every', type=int, default=10000, help='interval to evaluation to concrete results')
+    parser.add_argument('--valid_every', type=int, default=10000, help='interval to validation')
+    parser.add_argument('--save_every', type=int, default=50000, help='interval to evaluation to concrete results')
     parser.add_argument('--seed', type=int, default=1111, help='random seed')
         
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
@@ -302,10 +323,6 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    
-    # make output directory if it doesn't already exist
-    os.makedirs(f'./output/{args.model}/{args.dataset}/models', exist_ok=True)
-    os.makedirs(f'./output/{args.model}/{args.dataset}/tmp_results', exist_ok=True)
     
     torch.backends.cudnn.benchmark = True # speed up training by using cudnn
     torch.backends.cudnn.deterministic = True # fix the random seed in cudnn

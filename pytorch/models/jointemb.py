@@ -15,8 +15,10 @@ from modules import SeqEncoder, BOWEncoder
 
 class JointEmbeder(nn.Module):
     """
+    References on sentence pair matching models:
     https://arxiv.org/pdf/1508.01585.pdf
     https://arxiv.org/pdf/1908.10084.pdf
+    similarity scale classification for sentence pairs: https://arxiv.org/pdf/1503.00075.pdf
     """
     def __init__(self, config):
         super(JointEmbeder, self).__init__()
