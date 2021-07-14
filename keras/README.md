@@ -43,19 +43,25 @@ A keras implementation of the paper [Deep Code Search](https://guxd.github.io/pa
    
    ### Code Embedding
    
+   First, set `reload` in `config.py` to the number of optimal checkpoint, e.g., 500
+   
+   Then, run
    ```bash
    python main.py --mode repr_code
    ```
    
    ### Search
    
+   First, set `reload` in `config.py` to the number of optimal checkpoint, e.g., 500  
+   
+   Then, run
    ```bash
    python main.py --mode search
    ``` 
    
 ## Tool Demo
 
-An online tool demo can be found at http://211.249.63.55:81/ 
+An online tool demo can be found at http://211.249.63.55:81/ (Unavailable Now)
 
 ## Citation
 If you find it useful and would like to cite it, the following would be appropriate:
