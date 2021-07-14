@@ -70,7 +70,9 @@ PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    where `XXX` stands for the timestamp, and `YYY` represents the iteration with the best model.
    
    Here is a screenshot of code search:
-   <img src="https://user-images.githubusercontent.com/6091014/125629170-6dff5196-7b9a-41b4-b4a7-53626f6b2e83.png" width=50% height=50%>
+   
+   <img src="https://user-images.githubusercontent.com/6091014/125629170-6dff5196-7b9a-41b4-b4a7-53626f6b2e83.png" width=100% height=100%>
+   
 
 ## Citation
 
