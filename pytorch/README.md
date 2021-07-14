@@ -27,7 +27,7 @@ PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
 
 ## Pretrained Model
 
-   If you want a quick test, [here](https://drive.google.com/file/d/15HoKv0efrVXNTsqCxoq2Swgh6ohuq5jI/view?usp=sharing) is a pretrained model. Put it in `./output/JointEmbeder/github/202106140524/models/` and run:
+   If you want a quick test, [here](https://drive.google.com/file/d/1xpUXsSFbULYEAs8low5zQZWK7-wmqTNO/view?usp=sharing) is a pretrained model. Put it in `./output/JointEmbeder/github/202106140524/models/` and run:
 
    ```
    python repr_code.py -t 202106140524 --reload_from 4000000
