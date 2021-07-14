@@ -33,7 +33,6 @@ PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    python repr_code.py -t 202106140524 --reload_from 4000000
    python search.py -t 202106140524 --reload_from 4000000
    ```
-   <img src="https://user-images.githubusercontent.com/6091014/125632961-36df8a55-5a1e-4d90-b96d-5abca8e90e0e.png" width=50% height=50%>
    
  
 ## Usage
@@ -54,7 +53,8 @@ PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    ```bash
    python train.py --model JointEmbeder -v
    ```
-   
+   <img src="https://user-images.githubusercontent.com/6091014/125632961-36df8a55-5a1e-4d90-b96d-5abca8e90e0e.png" width=50% height=50%>
+      
    ### Code Embedding
    
    ```bash
