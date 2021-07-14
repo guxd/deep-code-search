@@ -15,7 +15,7 @@ def config_JointEmbeder():
             'valid_desc':'valid.desc.h5',
             #use data (computing code vectors)
             'use_codebase':'use.rawcode.txt',#'use.rawcode.h5'
-            'use_names':'use.methname.h5',
+            'use_names':'use.name.h5',
             'use_apis':'use.apiseq.h5',
             'use_tokens':'use.tokens.h5',     
             #results data(code vectors)            
@@ -56,4 +56,3 @@ def config_JointEmbeder():
                          #cos, poly and sigmoid are fast with simple dot, while euc, gesd and aesd are slow with vector normalization.
     }
     return conf
-

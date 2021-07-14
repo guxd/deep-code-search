@@ -26,10 +26,10 @@ PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
  - `utils.py`: utilities for models and training. 
 
 ## Pretrained Model
-   If you want a quick test, [here](https://drive.google.com/file/d/15HoKv0efrVXNTsqCxoq2Swgh6ohuq5jI/view?usp=sharing) is a pretrained model. Put it in `./output/JointEmbeder/github/models/` and run:
+   If you want a quick test, [here](https://drive.google.com/file/d/15HoKv0efrVXNTsqCxoq2Swgh6ohuq5jI/view?usp=sharing) is a pretrained model. Put it in `./output/JointEmbeder/github/202106140524/models/` and run:
    ```
-   python repr_code.py --reload_from 4000000
-   python search.py --reload_from 4000000
+   python repr_code.py -t 202106140524 --reload_from 4000000
+   python search.py -t 202106140524 --reload_from 4000000
    ```
    <img src="https://user-images.githubusercontent.com/6091014/86455134-2a71dc00-bd5b-11ea-98cb-6dc1ef1095df.png" width=50% height=50%>
  
@@ -49,20 +49,22 @@ PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    ### Train
    
    ```bash
-   python train.py --model JointEmbeder
+   python train.py --model JointEmbeder -v
    ```
    
    ### Code Embedding
    
    ```bash
-   python repr_code.py --model JointEmbeder --reload_from XXX
+   python repr_code.py --model JointEmbeder -t XXX --reload_from YYY
    ```
+   where `XXX` stands for the timestamp, and `YYY` represents the iteration with the best model.
    
    ### Search
    
    ```bash
-   python search.py --model JointEmbeder --_reload_from XXX
+   python search.py --model JointEmbeder -t XXX --_reload_from YYY
    ```
+   where `XXX` stands for the timestamp, and `YYY` represents the iteration with the best model.
    
 
 ## Citation

@@ -42,7 +42,8 @@ class BOWEncoder(nn.Module):
         # embeded = word_weights*embedded 
         
         # max pooling word vectors
-        output_pool = F.max_pool1d(embedded.transpose(1,2), seq_len).squeeze(2) # [batch_size x emb_size]
+        maxpooling = nn.MaxPool1d(kernel_size = seq_len, stride=seq_len)
+        output_pool = maxpooling(embedded.transpose(1,2)).squeeze(2) # [batch_size x emb_size]
         encoding = output_pool #torch.tanh(output_pool)        
         return encoding
         
@@ -82,22 +83,27 @@ class SeqEncoder(nn.Module):
             inputs_sorted = inputs.index_select(0, indices)        
             inputs = pack_padded_sequence(inputs_sorted, input_lens_sorted.data.tolist(), batch_first=True)
             
-        hids, (h_n, c_n) = self.lstm(inputs) # hids:[b x seq x hid_sz*2](biRNN) 
+        hids, (h_n, c_n) = self.lstm(inputs)  
         
         if input_lens is not None: # reorder and pad
             _, inv_indices = indices.sort()
-            hids, lens = pad_packed_sequence(hids, batch_first=True)   
+            hids, lens = pad_packed_sequence(hids, batch_first=True) # hids:[batch_size x seq_len x (n_dir*hid_sz)](biRNN)
             hids = F.dropout(hids, p=0.25, training=self.training)
             hids = hids.index_select(0, inv_indices)
             h_n = h_n.index_select(1, inv_indices)
         h_n = h_n.view(self.n_layers, 2, batch_size, self.hidden_size) #[n_layers x n_dirs x batch_sz x hid_sz]
         h_n = h_n[-1] # get the last layer [n_dirs x batch_sz x hid_sz]
 ############commenting the following line significantly improves the performance, why? #####################################
-        h_n = h_n.transpose(1, 0).contiguous() #[batch_size x n_dirs x hid_sz]
-        encoding = h_n.view(batch_size,-1) #[batch_sz x (n_dirs*hid_sz)]
-        #pooled_encoding = F.max_pool1d(hids.transpose(1,2), seq_len).squeeze(2) # [batch_size x hid_size*2]
-        #encoding = torch.tanh(pooled_encoding)
-        return encoding #pooled_encoding
+      #  h_n1 = h_n.transpose(1, 0).contiguous() #[batch_size x n_dirs x hid_sz]
+      #  encoding1 = h_n1.view(batch_size,-1) #[batch_sz x (n_dirs*hid_sz)]
+        
+        #https://www.jianshu.com/p/c5b8e02bedbe
+        #maxpooling = nn.MaxPool1d(kernel_size=hids.size(1), stride=hids.size(1))
+        #encoding2 = maxpooling(hids.transpose(1,2)).squeeze(2) # [batch_size x 2*hid_size]
+        #encoding2 = torch.tanh(encoding2)
+
+        encoding3 = torch.cat((h_n[0], h_n[1]), dim=1)
+        return encoding3 #, encoding2, encoding3
 
     
 from torch.optim.lr_scheduler import LambdaLR
