@@ -262,20 +262,20 @@ if __name__ == '__main__':
         engine.train(model)
         
     elif args.mode=='eval': # evaluate for a specific epoch
-        if config['training_params']['reload']>0:
-            engine.load_model(model, config['training_params']['reload'])
+        assert config['training_params']['reload']>0, "please specify the number of epoch of the optimal checkpoint in config.py"
+        engine.load_model(model, config['training_params']['reload'])
         engine.eval(model, -1, 10)
         
     elif args.mode=='repr_code':
-        if config['training_params']['reload']>0:
-            engine.load_model(model, config['training_params']['reload'])
+        assert config['training_params']['reload']>0, "please specify the number of epoch of the optimal checkpoint in config.py"
+        engine.load_model(model, config['training_params']['reload'])
         vecs = engine.repr_code(model)
         data_loader.save_code_reprs(vecs, data_path+config['data_params']['use_codevecs'])
         
     elif args.mode=='search':
         #search code based on a desc
-        if config['training_params']['reload']>0:
-            engine.load_model(model, config['training_params']['reload'])
+        assert config['training_params']['reload']>0, "please specify the number of epoch of the optimal checkpoint in config.py"
+        engine.load_model(model, config['training_params']['reload'])
         engine._code_reprs = data_loader.load_code_reprs(data_path+config['data_params']['use_codevecs'], engine._codebase_chunksize)
         engine._codebase = data_loader.load_codebase(data_path+config['data_params']['use_codebase'], engine._codebase_chunksize)
         vocab = data_loader.load_pickle(data_path+config['data_params']['vocab_desc'])
