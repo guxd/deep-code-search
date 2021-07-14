@@ -158,9 +158,10 @@ class SearchEngine:
             accs.append(ACC(real,predict))
             mrrs.append(MRR(real,predict))
             maps.append(MAP(real,predict))
-            ndcgs.append(NDCG(real,predict))                          
-        logger.info(f'ACC={np.mean(accs)}, MRR={np.mean(mrrs)}, MAP={np.mean(maps)}, nDCG={np.mean(ndcgs)}')        
-        return acc,mrr,map,ndcg
+            ndcgs.append(NDCG(real,predict))  
+        acc, mrr, map_, ndcg = np.mean(accs), np.mean(mrrs), np.mean(maps), np.mean(ndcgs)
+        logger.info(f'ACC={acc}, MRR={mrr}, MAP={map_}, nDCG={ndcg}')        
+        return acc,mrr,map_,ndcg
     
     
     ##### Compute Representation #####
@@ -264,7 +265,7 @@ if __name__ == '__main__':
     elif args.mode=='eval': # evaluate for a specific epoch
         assert config['training_params']['reload']>0, "please specify the number of epoch of the optimal checkpoint in config.py"
         engine.load_model(model, config['training_params']['reload'])
-        engine.eval(model, -1, 10)
+        engine.valid(model, -1, 10)
         
     elif args.mode=='repr_code':
         assert config['training_params']['reload']>0, "please specify the number of epoch of the optimal checkpoint in config.py"
