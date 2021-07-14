@@ -33,7 +33,8 @@ PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    python repr_code.py -t 202106140524 --reload_from 4000000
    python search.py -t 202106140524 --reload_from 4000000
    ```
-   <img src="https://user-images.githubusercontent.com/6091014/86455134-2a71dc00-bd5b-11ea-98cb-6dc1ef1095df.png" width=50% height=50%>
+   <img src="https://user-images.githubusercontent.com/6091014/125632961-36df8a55-5a1e-4d90-b96d-5abca8e90e0e.png" width=50% height=50%>
+   
  
 ## Usage
 
@@ -68,6 +69,8 @@ PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepc
    ```
    where `XXX` stands for the timestamp, and `YYY` represents the iteration with the best model.
    
+   Here is a screenshot of code search:
+   <img src="https://user-images.githubusercontent.com/6091014/125629170-6dff5196-7b9a-41b4-b4a7-53626f6b2e83.png" width=50% height=50%>
 
 ## Citation
 
