@@ -9,9 +9,9 @@ We release both ```Keras``` and ```PyTorch``` code of our approach, in the ```ke
 
 - The ```PyTorch``` is the bleeding-edge reporitory where we packaged it up, improved the code quality and added some features.
 
-⚠️ **Note that the PyTorch version is problematic at present. For though who want to replicate DeepCS as a baseline model, it is highly recommended to check out the Keras version. This could greatly save your time and effort**.
+⚠️ **Note that the PyTorch version is problematic at present. For those who want to replicate DeepCS as a baseline model, it is highly recommended to check out the Keras version. This could greatly save your time and effort**.
 
-🤗 If you are interested in improving DeepCS, check out the PyTorch version and feel free to contribute.
+🤗 Nevertheless, if you are interested in using and improving DeepCS, check out the PyTorch version and feel free to contribute.
 
 For more information, please refer to the README files under the directory of each component.
 
