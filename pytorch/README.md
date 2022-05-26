@@ -2,7 +2,7 @@
 
 PyTorch implementation of [Deep Code Search](https://guxd.github.io/papers/deepcs.pdf).
 
-⚠️ **Note that the PyTorch version is problematic at present. It might need bugfix or hyperparameter tuning. For though who want to replicate DeepCS as a baseline model, it is highly recommended to check out the Keras version. This could greatly save your time and effort**.
+⚠️ **Note that the PyTorch version is problematic at present. It might need bugfix or hyperparameter tuning. For those who want to replicate DeepCS as a baseline model, it is highly recommended to check out the Keras version. This could greatly save your time and effort**.
 
 ## Dependency
 > Tested in MacOS 10.12, Ubuntu 16.04
